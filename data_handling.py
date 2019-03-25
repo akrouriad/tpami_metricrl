@@ -15,7 +15,7 @@ def rollout(env, policy, render=False):
         if render:
             env.render()
         act = policy(obs)
-        print(act)
+        # print(act)
         nobs, rwd, done, _ = env.step(act)
         yield obs, act, rwd, done
         obs = nobs
