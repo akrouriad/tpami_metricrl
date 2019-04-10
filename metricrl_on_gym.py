@@ -30,6 +30,24 @@ class MLP(nn.Module):
         return x
 
 
+class GaussianPolicy(nn.Module):
+    def __init__(self, mean_func, a_dim):
+        super().__init__()
+        self.a_dim = a_dim
+        self.mean_func = mean_func
+        self.log_sigma = nn.Parameter(torch.zeros(a_dim))
+
+    def forward(self, x):
+        cov = torch.diag(torch.exp(2 * self.log_sigma))
+        return torch.distributions.MultivariateNormal(loc=self.mean_func(x), covariance_matrix=cov).sample()
+
+    def log_prob(self, x, y):
+        cov = torch.diag(torch.exp(2 * self.log_sigma))
+        return torch.distributions.MultivariateNormal(loc=self.mean_func(x), covariance_matrix=cov).log_prob(y)
+
+    def entropy(self):
+        return self.a_dim / 2 * np.log(2 * np.pi * np.e) + torch.sum(self.log_sigma).detach().numpy()
+
 def get_targets(mlp, obs, rwd, done, discount, lam):
     # computes v_update targets
     v_values = mlp(torch.tensor(obs, dtype=torch.float)).detach().numpy()
@@ -43,7 +61,7 @@ def get_targets(mlp, obs, rwd, done, discount, lam):
     return gen_adv + v_values, gen_adv
 
 
-def get_adv(mlp, obs, act, rwd, done, discount, lam):
+def get_adv(mlp, obs, rwd, done, discount, lam):
     _, adv = get_targets(mlp, obs, rwd, done, discount, lam)
     return adv
 
@@ -54,14 +72,16 @@ def learn(envid):
     h_layer_length = 2
     lr = 3e-4
     nb_epochs = 10
+    eps_ppo = .2
 
     input_sizes = [env.observation_space.shape[0]] + [h_layer_width] * h_layer_length
     value_mlp = MLP(input_sizes + [1])
     v_optim = torch.optim.Adam(value_mlp.parameters(), lr=lr)
 
     policy_mlp = MLP(input_sizes + [env.action_space.shape[0]])
-    policy = lambda obs: policy_mlp(torch.tensor(obs, dtype=torch.float)).detach().numpy()
-    p_optim = torch.optim.Adam(policy_mlp.parameters(), lr=lr)
+    policy_torch = GaussianPolicy(policy_mlp, env.action_space.shape[0])
+    policy = lambda obs: policy_torch(torch.tensor(obs, dtype=torch.float)).detach().numpy()
+    p_optim = torch.optim.Adam(policy_torch.parameters(), lr=lr)
 
     discount = .99
     lam = .95
@@ -69,22 +89,36 @@ def learn(envid):
     min_sample_per_iter = 3200
     for iter in range(max_iter):
         p_paths = dat.rollouts(env, policy, min_sample_per_iter, render=False)
+        print("iter {}: rewards {} entropy {}".format(iter + 1, np.sum(p_paths['rwd']) / np.sum(p_paths['done']), policy_torch.entropy()))
+        obs = torch.tensor(p_paths['obs'], dtype=torch.float)
+        act = torch.tensor(p_paths['act'], dtype=torch.float)
 
-        # update policy
+        # update policy and v
+        adv = get_adv(mlp=value_mlp, obs=p_paths['obs'], rwd=p_paths['rwd'], done=p_paths['done'], discount=discount, lam=lam)
+        torch_adv = torch.tensor(adv, dtype=torch.float)
+        old_log_p = policy_torch.log_prob(obs, act).detach()
 
+
+        v_target, _ = get_targets(value_mlp, p_paths['obs'], p_paths['rwd'], p_paths['done'], discount, lam)
+        torch_targets = torch.tensor(v_target, dtype=torch.float)
 
         # compute v_targets
-        for i_v in range(nb_epochs):
-            v_target, _ = get_targets(value_mlp, p_paths['obs'], p_paths['rwd'], p_paths['done'], discount, lam)
-            torch_obs = torch.tensor(p_paths['obs'], dtype=torch.float)
-            torch_targets = torch.tensor(v_target, dtype=torch.float)
-            print('v_loss at epoch {}: {}'.format(i_v, F.mse_loss(value_mlp(torch_obs), torch_targets).detach().numpy()))
+        for epoch in range(nb_epochs):
             for batch_idx in dat.next_batch_idx(h_layer_width, len(p_paths['rwd'])):
+                # update value network
                 v_optim.zero_grad()
-                mse = F.mse_loss(value_mlp(torch_obs[batch_idx]), torch_targets[batch_idx])
+                mse = F.mse_loss(value_mlp(obs[batch_idx]), torch_targets[batch_idx])
                 mse.backward()
                 v_optim.step()
 
+                # update policy
+                p_optim.zero_grad()
+                prob_ratio = torch.exp(policy_torch.log_prob(obs[batch_idx], act[batch_idx]) - old_log_p[batch_idx])
+                clipped_ratio = torch.clamp(prob_ratio, 1 - eps_ppo, 1 + eps_ppo)
+                loss = -torch.mean(torch.min(prob_ratio * torch_adv[batch_idx], clipped_ratio * torch_adv[batch_idx]))
+                loss.backward()
+                p_optim.step()
 
 if __name__ == '__main__':
-    learn(envid='MountainCarContinuous-v0')
+    # learn(envid='MountainCarContinuous-v0')
+    learn(envid='BipedalWalker-v2')
