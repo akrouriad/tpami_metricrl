@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import roboschool
 import gym
 import data_handling as dat
 
@@ -17,9 +18,9 @@ class MLP(nn.Module):
         for k, kp, activ in zip(size_list[:-1], size_list[1:], activation_list):
             self.layers.append(nn.Linear(k, kp))
             if activ is not None:
-                nn.init.xavier_normal_(self.layers[-1].weight, nn.init.calculate_gain(activ.__name__))
+                nn.init.xavier_uniform_(self.layers[-1].weight, nn.init.calculate_gain(activ.__name__))
             else:
-                nn.init.xavier_normal_(self.layers[-1].weight)
+                nn.init.xavier_uniform_(self.layers[-1].weight)
 
     def forward(self, x):
         for l, a in zip(self.layers, self.activation_list):
@@ -31,19 +32,23 @@ class MLP(nn.Module):
 
 
 class GaussianPolicy(nn.Module):
-    def __init__(self, mean_func, a_dim):
+    def __init__(self, mean_func, a_dim, mean_mul=1.):
         super().__init__()
+        self._mean_func = mean_func
         self.a_dim = a_dim
-        self.mean_func = mean_func
+        self._mean_mul = mean_mul
         self.log_sigma = nn.Parameter(torch.zeros(a_dim))
+
+    def get_mean(self, x):
+        return self._mean_func(x) * self._mean_mul
 
     def forward(self, x):
         cov = torch.diag(torch.exp(2 * self.log_sigma))
-        return torch.distributions.MultivariateNormal(loc=self.mean_func(x), covariance_matrix=cov).sample()
+        return torch.distributions.MultivariateNormal(loc=self.get_mean(x), covariance_matrix=cov).sample().detach()
 
     def log_prob(self, x, y):
         cov = torch.diag(torch.exp(2 * self.log_sigma))
-        return torch.distributions.MultivariateNormal(loc=self.mean_func(x), covariance_matrix=cov).log_prob(y)
+        return torch.distributions.MultivariateNormal(loc=self.get_mean(x), covariance_matrix=cov).log_prob(y)[:, None]
 
     def entropy(self):
         return self.a_dim / 2 * np.log(2 * np.pi * np.e) + torch.sum(self.log_sigma).detach().numpy()
@@ -85,7 +90,7 @@ def learn(envid):
 
     discount = .99
     lam = .95
-    max_iter = 100
+    max_iter = 3000
     min_sample_per_iter = 3200
     for iter in range(max_iter):
         p_paths = dat.rollouts(env, policy, min_sample_per_iter, render=False)
@@ -97,7 +102,6 @@ def learn(envid):
         adv = get_adv(mlp=value_mlp, obs=p_paths['obs'], rwd=p_paths['rwd'], done=p_paths['done'], discount=discount, lam=lam)
         torch_adv = torch.tensor(adv, dtype=torch.float)
         old_log_p = policy_torch.log_prob(obs, act).detach()
-
 
         v_target, _ = get_targets(value_mlp, p_paths['obs'], p_paths['rwd'], p_paths['done'], discount, lam)
         torch_targets = torch.tensor(v_target, dtype=torch.float)
@@ -119,6 +123,9 @@ def learn(envid):
                 loss.backward()
                 p_optim.step()
 
+    p_paths = dat.rollouts(env, policy, min_sample_per_iter, render=True)
+
 if __name__ == '__main__':
     # learn(envid='MountainCarContinuous-v0')
-    learn(envid='BipedalWalker-v2')
+    # learn(envid='BipedalWalker-v2')
+    learn(envid='RoboschoolHalfCheetah-v1')
