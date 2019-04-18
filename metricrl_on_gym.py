@@ -8,12 +8,13 @@ import data_handling as dat
 
 
 class MLP(nn.Module):
-    def __init__(self, size_list, activation_list=None):
+    def __init__(self, size_list, activation_list=None, preproc=None):
         super().__init__()
         self.size_list = size_list
         if not activation_list or activation_list is None:
             activation_list = [torch.tanh] * (len(size_list) - 2) + [None]
         self.activation_list = activation_list
+        self.preproc = preproc
         self.layers = nn.ModuleList()
         for k, kp, activ in zip(size_list[:-1], size_list[1:], activation_list):
             self.layers.append(nn.Linear(k, kp))
@@ -23,12 +24,39 @@ class MLP(nn.Module):
                 nn.init.xavier_uniform_(self.layers[-1].weight)
 
     def forward(self, x):
+        if self.preproc is not None:
+            x = self.preproc(x)
+
         for l, a in zip(self.layers, self.activation_list):
             if a is not None:
                 x = a(l(x))
             else:
                 x = l(x)
         return x
+
+
+class RunningMeanStdFilter:
+    def __init__(self, s_dim, min_clamp, max_clamp):
+        self.sumx = torch.zeros(s_dim, dtype=torch.float64)
+        self.sumx2 = torch.zeros(s_dim, dtype=torch.float64)
+        self.mean = torch.zeros(s_dim, dtype=torch.float64)
+        self.std = torch.zeros(s_dim, dtype=torch.float64)
+        self.count = torch.zeros(1, dtype=torch.float64)
+        self.min_clamp, self.max_clamp = min_clamp, max_clamp
+
+    def update(self, x):
+        self.count += x.size()[0]
+        self.sumx += torch.sum(x, dim=0).to(torch.float64)
+        self.sumx2 += torch.sum(x ** 2, dim=0).to(torch.float64)
+        self.mean = self.sumx / self.count
+        self.std = torch.clamp(torch.sqrt(self.sumx2 / self.count - self.mean ** 2), 1e-2)
+
+    def __call__(self, x):
+        dtype = x.dtype
+        if self.count > 0:
+            return torch.clamp((x.to(torch.float64) - self.mean) / self.std, self.min_clamp, self.max_clamp).to(dtype)
+        else:
+            return x
 
 
 class GaussianPolicy(nn.Module):
@@ -73,18 +101,28 @@ def get_adv(mlp, obs, rwd, done, discount, lam):
 
 def learn(envid):
     env = gym.make(envid)
+    seed = 0
+    env.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+
     h_layer_width = 64
     h_layer_length = 2
     lr = 3e-4
     nb_epochs = 10
     eps_ppo = .2
 
-    input_sizes = [env.observation_space.shape[0]] + [h_layer_width] * h_layer_length
-    value_mlp = MLP(input_sizes + [1])
+    s_dim = env.observation_space.shape[0]
+    a_dim = env.action_space.shape[0]
+    obs_filter = RunningMeanStdFilter(s_dim, min_clamp=-5, max_clamp=5)
+    rwd_filter = RunningMeanStdFilter(1, min_clamp=-1, max_clamp=1)
+
+    input_sizes = [s_dim] + [h_layer_width] * h_layer_length
+    value_mlp = MLP(input_sizes + [1], preproc=obs_filter)
     v_optim = torch.optim.Adam(value_mlp.parameters(), lr=lr)
 
-    policy_mlp = MLP(input_sizes + [env.action_space.shape[0]])
-    policy_torch = GaussianPolicy(policy_mlp, env.action_space.shape[0])
+    policy_mlp = MLP(input_sizes + [a_dim], preproc=obs_filter)
+    policy_torch = GaussianPolicy(policy_mlp, a_dim)
     policy = lambda obs: policy_torch(torch.tensor(obs, dtype=torch.float)).detach().numpy()
     p_optim = torch.optim.Adam(policy_torch.parameters(), lr=lr)
 
@@ -94,19 +132,25 @@ def learn(envid):
     min_sample_per_iter = 3200
     for iter in range(max_iter):
         p_paths = dat.rollouts(env, policy, min_sample_per_iter, render=False)
-        print("iter {}: rewards {} entropy {}".format(iter + 1, np.sum(p_paths['rwd']) / np.sum(p_paths['done']), policy_torch.entropy()))
         obs = torch.tensor(p_paths['obs'], dtype=torch.float)
         act = torch.tensor(p_paths['act'], dtype=torch.float)
+        rwd = torch.tensor(p_paths['rwd'], dtype=torch.float)
+        avg_rwd = np.sum(p_paths['rwd']) / np.sum(p_paths['done'])
+        rwd_filter.update(rwd)
+        # rwd = rwd_filter(rwd)
 
         # update policy and v
-        adv = get_adv(mlp=value_mlp, obs=p_paths['obs'], rwd=p_paths['rwd'], done=p_paths['done'], discount=discount, lam=lam)
+        adv = get_adv(mlp=value_mlp, obs=p_paths['obs'], rwd=rwd.numpy(), done=p_paths['done'], discount=discount, lam=lam)
         torch_adv = torch.tensor(adv, dtype=torch.float)
         old_log_p = policy_torch.log_prob(obs, act).detach()
 
-        v_target, _ = get_targets(value_mlp, p_paths['obs'], p_paths['rwd'], p_paths['done'], discount, lam)
+        v_target, _ = get_targets(value_mlp, p_paths['obs'], rwd.numpy(), p_paths['done'], discount, lam)
         torch_targets = torch.tensor(v_target, dtype=torch.float)
 
-        # compute v_targets
+        print("iter {}: rewards {} entropy {} vf_loss {}".format(iter + 1, avg_rwd, policy_torch.entropy(),
+                                                                 F.mse_loss(value_mlp(obs), torch_targets)))
+        # compute update filter, v_values and policy
+        obs_filter.update(obs)
         for epoch in range(nb_epochs):
             for batch_idx in dat.next_batch_idx(h_layer_width, len(p_paths['rwd'])):
                 # update value network
@@ -128,4 +172,6 @@ def learn(envid):
 if __name__ == '__main__':
     # learn(envid='MountainCarContinuous-v0')
     # learn(envid='BipedalWalker-v2')
-    learn(envid='RoboschoolHalfCheetah-v1')
+    # learn(envid='RoboschoolHalfCheetah-v1')
+    learn(envid='RoboschoolHopper-v1')
+    # learn(envid='RoboschoolAnt-v1')
