@@ -1,13 +1,13 @@
 test = False
-local = True
-# dir_out = '/home/ra61casa/eall/'
-dir_out = './'
+local = False
+dir_out = '/home/ra61casa/normacomp/'
+# dir_out = './normacomp/'
 
 base = '_norma'
 envs = ['BipedalWalker-v2', 'RoboschoolHopper-v1', 'RoboschoolInvertedDoublePendulum-v1', 'RoboschoolWalker2d-v1', 'RoboschoolHalfCheetah-v1', 'RoboschoolAnt-v1', 'MountainCarContinuous-v0']
 nb_runs = 5
 all_par = []
-max_tss = [3e6]
+max_tss = [1e3]
 normas = ['None', 'Obs', 'All']
 # Creating parameters tables
 for max_ts in max_tss:
@@ -29,7 +29,7 @@ for k, i in enumerate(range(0, len(all_par), nb_par)):
 import sys
 from multiprocessing import Process
 def learn_process(dict):
-  sys.stdout = open(dict['dir_out'] + 'logs/' + dict['name'] + ".out", "w")
+  sys.stdout = open(dict['log_name'] + ".out", "w")
   import metricrl_on_gym
   metricrl_on_gym.learn(**dict)
      
