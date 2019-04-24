@@ -7,7 +7,7 @@ base = '_norma'
 envs = ['BipedalWalker-v2', 'RoboschoolHopper-v1', 'RoboschoolInvertedDoublePendulum-v1', 'RoboschoolWalker2d-v1', 'RoboschoolHalfCheetah-v1', 'RoboschoolAnt-v1', 'MountainCarContinuous-v0']
 nb_runs = 5
 all_par = []
-max_tss = [1e3]
+max_tss = [3e6]
 normas = ['None', 'Obs', 'All']
 # Creating parameters tables
 for max_ts in max_tss:
