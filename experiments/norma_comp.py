@@ -73,7 +73,7 @@ for p in ps:
             print("#SBATCH -C avx2", file=file)
             print("#SBATCH -c " + str(nb_par), file=file)
             print("cd \nsource .bash_profile", file=file)
-            print("cd /home/ra61casa/src/baselines/experiments", file=file)
+            print("cd /home/ra61casa/src/metricrl/experiments", file=file)
             print("PYTHONPATH=$(cd ..;pwd) python " + script_name, file=file)
         
 if not test:
