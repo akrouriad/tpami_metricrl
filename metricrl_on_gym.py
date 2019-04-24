@@ -5,6 +5,7 @@ import torch.nn.functional as F
 import roboschool
 import gym
 import data_handling as dat
+import rllog
 
 
 class MLP(nn.Module):
@@ -81,6 +82,16 @@ class GaussianPolicy(nn.Module):
     def entropy(self):
         return self.a_dim / 2 * np.log(2 * np.pi * np.e) + torch.sum(self.log_sigma).detach().numpy()
 
+
+class ValueFunction(nn.Module):
+    def __init__(self, approx):
+        super().__init__()
+        self._approx = approx
+
+    def forward(self, x):
+        return self._approx(x)
+
+
 def get_targets(mlp, obs, rwd, done, discount, lam):
     # computes v_update targets
     v_values = mlp(torch.tensor(obs, dtype=torch.float)).detach().numpy()
@@ -99,9 +110,8 @@ def get_adv(mlp, obs, rwd, done, discount, lam):
     return adv
 
 
-def learn(envid):
+def learn(envid, seed=0, max_ts=1e6, norma='None', log_name=None):
     env = gym.make(envid)
-    seed = 0
     env.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -115,11 +125,12 @@ def learn(envid):
     s_dim = env.observation_space.shape[0]
     a_dim = env.action_space.shape[0]
     obs_filter = RunningMeanStdFilter(s_dim, min_clamp=-5, max_clamp=5)
-    rwd_filter = RunningMeanStdFilter(1, min_clamp=-1, max_clamp=1)
+    rwd_filter = RunningMeanStdFilter(1, min_clamp=-5, max_clamp=5)
 
     input_sizes = [s_dim] + [h_layer_width] * h_layer_length
     value_mlp = MLP(input_sizes + [1], preproc=obs_filter)
-    v_optim = torch.optim.Adam(value_mlp.parameters(), lr=lr)
+    value = ValueFunction(value_mlp)
+    v_optim = torch.optim.Adam(value.parameters(), lr=lr)
 
     policy_mlp = MLP(input_sizes + [a_dim], preproc=obs_filter)
     policy_torch = GaussianPolicy(policy_mlp, a_dim)
@@ -128,34 +139,47 @@ def learn(envid):
 
     discount = .99
     lam = .95
-    max_iter = 3000
     min_sample_per_iter = 3200
-    for iter in range(max_iter):
+
+    cum_ts = 0
+    iter = 0
+    if log_name is not None:
+        logger = rllog.PolicyIterationLogger(log_name)
+    while True:
         p_paths = dat.rollouts(env, policy, min_sample_per_iter, render=False)
+        iter_ts = len(p_paths['rwd'])
+        cum_ts += iter_ts
         obs = torch.tensor(p_paths['obs'], dtype=torch.float)
         act = torch.tensor(p_paths['act'], dtype=torch.float)
         rwd = torch.tensor(p_paths['rwd'], dtype=torch.float)
         avg_rwd = np.sum(p_paths['rwd']) / np.sum(p_paths['done'])
+        if log_name is not None:
+            logger.next_iter_path(p_paths['rwd'][:, 0], p_paths['done'], policy_torch.entropy())
+
         rwd_filter.update(rwd)
-        # rwd = rwd_filter(rwd)
+        if norma == 'All':
+            rwd = rwd_filter(rwd)
 
         # update policy and v
-        adv = get_adv(mlp=value_mlp, obs=p_paths['obs'], rwd=rwd.numpy(), done=p_paths['done'], discount=discount, lam=lam)
+        adv = get_adv(mlp=value, obs=p_paths['obs'], rwd=rwd.numpy(), done=p_paths['done'], discount=discount, lam=lam)
         torch_adv = torch.tensor(adv, dtype=torch.float)
         old_log_p = policy_torch.log_prob(obs, act).detach()
 
-        v_target, _ = get_targets(value_mlp, p_paths['obs'], rwd.numpy(), p_paths['done'], discount, lam)
+        v_target, _ = get_targets(value, p_paths['obs'], rwd.numpy(), p_paths['done'], discount, lam)
         torch_targets = torch.tensor(v_target, dtype=torch.float)
 
         print("iter {}: rewards {} entropy {} vf_loss {}".format(iter + 1, avg_rwd, policy_torch.entropy(),
-                                                                 F.mse_loss(value_mlp(obs), torch_targets)))
+                                                                 F.mse_loss(value(obs), torch_targets)))
+        if cum_ts > max_ts:
+            break
         # compute update filter, v_values and policy
-        obs_filter.update(obs)
+        if norma == 'All' or norma == 'Obs':
+            obs_filter.update(obs)
         for epoch in range(nb_epochs):
-            for batch_idx in dat.next_batch_idx(h_layer_width, len(p_paths['rwd'])):
+            for batch_idx in dat.next_batch_idx(h_layer_width, iter_ts):
                 # update value network
                 v_optim.zero_grad()
-                mse = F.mse_loss(value_mlp(obs[batch_idx]), torch_targets[batch_idx])
+                mse = F.mse_loss(value(obs[batch_idx]), torch_targets[batch_idx])
                 mse.backward()
                 v_optim.step()
 
@@ -166,12 +190,12 @@ def learn(envid):
                 loss = -torch.mean(torch.min(prob_ratio * torch_adv[batch_idx], clipped_ratio * torch_adv[batch_idx]))
                 loss.backward()
                 p_optim.step()
+        iter += 1
 
-    p_paths = dat.rollouts(env, policy, min_sample_per_iter, render=True)
 
 if __name__ == '__main__':
     # learn(envid='MountainCarContinuous-v0')
-    # learn(envid='BipedalWalker-v2')
+    learn(envid='BipedalWalker-v2', max_ts=1e5, seed=0, norma='All', log_name='test_log_all')
     # learn(envid='RoboschoolHalfCheetah-v1')
-    learn(envid='RoboschoolHopper-v1')
-    # learn(envid='RoboschoolAnt-v1')
+    # learn(envid='RoboschoolHopper-v1')
+    # learn(envid='RoboschoolAnt-v1', seed=0, norma='None')
