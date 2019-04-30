@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 
 
 def next_batch_idx(batch_size, data_set_size):
@@ -36,3 +37,15 @@ def rollouts(env, policy, min_trans, render=False):
         if paths[key].ndim == 1:
             paths[key] = np.expand_dims(paths[key], axis=-1)
     return paths
+
+
+def torch_copy_get(x):
+    l = []
+    for p in x.parameters():
+        l.append(p.clone().detach())
+    return l
+
+
+def torch_copy_set(x, l):
+    for p, c in zip(x.parameters(), l):
+        p.data = c.data

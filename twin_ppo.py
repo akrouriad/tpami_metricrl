@@ -11,7 +11,9 @@ import rl_shared as rl
 import time
 
 
-def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None):
+def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, aggreg_type='None'):
+    print('Twin PPO')
+    print('Params: nb_vfunc {} norma {} aggreg_type {} max_ts {} seed {} log_name {}'.format(nb_vfunc, norma, aggreg_type, max_ts, seed, log_name))
     env = gym.make(envid)
     env.seed(seed)
     np.random.seed(seed)
@@ -22,6 +24,7 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None):
     lr = 3e-4
     nb_epochs = 10
     eps_ppo = .2
+    max_kl = .034
 
     s_dim = env.observation_space.shape[0]
     a_dim = env.action_space.shape[0]
@@ -67,7 +70,13 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None):
             rwd = rwd_filter(rwd)
 
         # update policy and v
-        adv = rl.get_adv(v_func=lambda obs: value_from_list(obs, reduce_fct=torch.max), obs=p_paths['obs'], rwd=rwd.numpy(), done=p_paths['done'], discount=discount, lam=lam)
+        if aggreg_type == 'None':
+            adv = rl.get_adv(v_func=value_fct[0], obs=p_paths['obs'], rwd=rwd.numpy(), done=p_paths['done'],
+                             discount=discount, lam=lam)
+        else:
+            aggreg_dic = {'Max': torch.max, 'Min': torch.min, 'Median': torch.median, 'Mean': torch.mean}
+            adv = rl.get_adv(v_func=lambda obs: value_from_list(obs, reduce_fct=aggreg_dic[aggreg_type]), obs=p_paths['obs'],
+                             rwd=rwd.numpy(), done=p_paths['done'], discount=discount, lam=lam)
         adv = (adv - np.mean(adv)) / (np.std(adv) + 1e-8)
         torch_adv = torch.tensor(adv, dtype=torch.float)
         # old_log_p = policy_torch.log_prob(obs, act).detach()
@@ -85,7 +94,10 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None):
         # compute update filter, v_values and policy
         if norma == 'All' or norma == 'Obs':
             obs_filter.update(obs)
+        all_pols = []
+        all_kls = [0.]
         for epoch in range(nb_epochs):
+            all_pols.append(dat.torch_copy_get(policy_torch))
             for batch_idx in dat.next_batch_idx(h_layer_width, iter_ts):
                 # update value network
                 for kv in range(nb_vfunc):
@@ -101,11 +113,32 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None):
                 loss = -torch.mean(torch.min(prob_ratio * torch_adv[batch_idx], clipped_ratio * torch_adv[batch_idx]))
                 loss.backward()
                 p_optim.step()
+            curr_pol_dist = policy_torch.distribution(obs)
+            all_kls.append(torch.mean(torch.distributions.kl_divergence(curr_pol_dist, old_pol_dist)))
+            print('kl', all_kls[-1])
+
+        selected_pol_idx = nb_epochs
+        if all_kls[-1] > max_kl:
+            # need to backtrack
+            for kl, p in zip(reversed(all_kls[:-1]), reversed(all_pols)):
+                selected_pol_idx -= 1
+                if kl <= max_kl:
+                    dat.torch_copy_set(policy_torch, p)
+                    break
+
+        if selected_pol_idx == nb_epochs and kl < max_kl / 4:
+            lr = lr * 1.25
+            for param_group in p_optim.param_groups:
+                param_group['lr'] = lr
+        elif selected_pol_idx < 2 * nb_epochs / 3:
+            lr = lr * .8
+            for param_group in p_optim.param_groups:
+                param_group['lr'] = lr
 
         new_pol_dist = policy_torch.distribution(obs)
         logging_kl = torch.mean(torch.distributions.kl_divergence(new_pol_dist, old_pol_dist))
         iter += 1
-        print("iter {}: rewards {} entropy {} vf_loss {} kl {}".format(iter, avg_rwd, logging_ent, logging_verr, logging_kl))
+        print("iter {}: rewards {} entropy {} vf_loss {} kl {} lr {} sel_ep {}".format(iter, avg_rwd, logging_ent, logging_verr, logging_kl, lr, selected_pol_idx))
 
 
 if __name__ == '__main__':
@@ -114,5 +147,5 @@ if __name__ == '__main__':
     # learn(envid='RoboschoolInvertedDoublePendulum-v1', max_ts=1e6, seed=0, norma='All', log_name='test_idp')
     # learn(envid='RoboschoolHalfCheetah-v1')
     # learn(envid='RoboschoolHopper-v1',  max_ts=3e6, seed=0, norma='None', log_name='test_hop')
-    learn(envid='RoboschoolHumanoid-v1',  max_ts=1e7, seed=0, norma='None', log_name='test_hum')
+    learn(envid='RoboschoolHumanoid-v1',  nb_vfunc=2, max_ts=1e7, seed=0, norma='None', log_name='test_hum', aggreg_type='Max')
     # learn(envid='RoboschoolAnt-v1', seed=0, norma='None')
