@@ -11,7 +11,7 @@ import rl_shared as rl
 import time
 
 
-def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, aggreg_type='None'):
+def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, aggreg_type='None', min_sample_per_iter=3000):
     print('Twin PPO')
     print('Params: nb_vfunc {} norma {} aggreg_type {} max_ts {} seed {} log_name {}'.format(nb_vfunc, norma, aggreg_type, max_ts, seed, log_name))
     env = gym.make(envid)
@@ -48,7 +48,6 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
 
     discount = .99
     lam = .95
-    min_sample_per_iter = 3200
 
     cum_ts = 0
     iter = 0
@@ -118,6 +117,7 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
             print('kl', all_kls[-1])
 
         selected_pol_idx = nb_epochs
+        kl = all_kls[-1]
         if all_kls[-1] > max_kl:
             # need to backtrack
             for kl, p in zip(reversed(all_kls[:-1]), reversed(all_pols)):

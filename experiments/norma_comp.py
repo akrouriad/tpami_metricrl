@@ -18,8 +18,8 @@ for max_ts in max_tss:
         for env in envs:
             for norma in normas:
                 for aggreg_type in aggreg_types:
-                    run_name = env + 'nb_v' + str(2) + 'norma' + norma + 'aggreg' + aggreg_type + 'mts' + str(max_ts / 1e6) + 'm' + 'run' + str(run)
-                    params = {'envid': env, 'seed': run, 'log_name': dir_out+run_name, 'max_ts': max_ts, 'norma': norma, 'aggreg_type': aggreg_type, 'nb_vfunc': 2}
+                    run_name = env + 'sampIt' + str(3000) + 'nb_v' + str(2) + 'norma' + norma + 'aggreg' + aggreg_type + 'mts' + str(max_ts / 1e6) + 'm' + 'run' + str(run)
+                    params = {'envid': env, 'seed': run, 'log_name': dir_out+run_name, 'max_ts': max_ts, 'norma': norma, 'aggreg_type': aggreg_type, 'nb_vfunc': 2, 'min_sample_per_iter': 3000}
                     all_par.append(params)
 
 
