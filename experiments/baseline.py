@@ -27,8 +27,8 @@ for max_ts in max_tss:
 
 # Creating launch scripts
 slurms = []
-nb_proc_per_act = 4
-nb_act = 4
+nb_proc_per_act = 2
+nb_act = 8
 nb_proc = nb_act * nb_proc_per_act
 for k, i in enumerate(range(0, len(all_par), nb_act)):
     # create python script
