@@ -3,15 +3,17 @@ local = False
 dir_out = '/home/ra61casa/normacomp/'
 # dir_out = './normacomp/'
 
-base = '_norma'
+base = '_aggobs'
 # envs = ['BipedalWalker-v2', 'RoboschoolHopper-v1', 'RoboschoolInvertedDoublePendulum-v1', 'RoboschoolWalker2d-v1', 'RoboschoolHalfCheetah-v1', 'RoboschoolAnt-v1', 'MountainCarContinuous-v0']
 envs = ['RoboschoolHopper-v1', 'RoboschoolWalker2d-v1', 'RoboschoolHalfCheetah-v1', 'RoboschoolAnt-v1']
 nb_runs = 5
 all_par = []
 max_tss = [1e6]
 # normas = ['None', 'Obs', 'All']
-normas = ['None']
-aggreg_types = ['None', 'Max', 'Min']
+# normas = ['None']
+normas = ['All']
+# aggreg_types = ['None', 'Max', 'Min']
+aggreg_types = ['Max']
 # Creating parameters tables
 for max_ts in max_tss:
     for run in range(nb_runs):
