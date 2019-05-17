@@ -64,7 +64,7 @@ class MetricPolicy(nn.Module):
         self.centers = torch.cat([self.centers, s])
         self.means_list.append(nn.Parameter(a))
         # self.rootweights_list.append(nn.Parameter(torch.tensor([0.])))
-        self.rootweights_list.append(nn.Parameter(torch.tensor([0.5])))
+        self.rootweights_list.append(nn.Parameter(torch.tensor([0.1])))
         # self.rootweights_list.append(nn.Parameter(torch.tensor([-2.])))
         self.cat_params()
 
@@ -188,7 +188,10 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
         print("iter {}: rewards {} entropy {} vf_loss {} kl {}".format(iter, avg_rwd, logging_ent, logging_verr, logging_kl))
         # print(policy_torch.rootweights)
         # print(torch.exp(policy_torch.logtemp))
-        print('avg membership', torch.mean(policy_torch.membership(obs), dim=0))
+        avgm = torch.mean(policy_torch.membership(obs), dim=0)
+        # print('avg membership', avgm)
+        print('avg membership', avgm[avgm > torch.max(avgm) / 100])
+
 
 
 if __name__ == '__main__':
