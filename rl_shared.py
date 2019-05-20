@@ -59,32 +59,6 @@ class RunningMeanStdFilter:
             return x
 
 
-class GaussianPolicy(nn.Module):
-    def __init__(self, mean_func, a_dim, mean_mul=1.):
-        super().__init__()
-        self._mean_func = mean_func
-        self.a_dim = a_dim
-        self._mean_mul = mean_mul
-        self.log_sigma = nn.Parameter(torch.zeros(a_dim))
-
-    def get_mean(self, x):
-        return self._mean_func(x) * self._mean_mul
-
-    def forward(self, x):
-        with torch.no_grad():
-            return self.distribution(x).sample().detach()
-
-    def log_prob(self, x, y):
-        return self.distribution(x).log_prob(y)[:, None]
-
-    def entropy(self):
-        return self.a_dim / 2 * np.log(2 * np.pi * np.e) + torch.sum(self.log_sigma).detach().numpy()
-
-    def distribution(self, x):
-        cov = torch.diag(torch.exp(2 * self.log_sigma))
-        return torch.distributions.MultivariateNormal(loc=self.get_mean(x), covariance_matrix=cov)
-
-
 class ValueFunction(nn.Module):
     def __init__(self, approx):
         super().__init__()

@@ -1,14 +1,13 @@
 import numpy as np
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 import roboschool
 import gym
 import data_handling as dat
 import rllog
-from rl_shared import MLP, RunningMeanStdFilter, ValueFunction, GaussianPolicy, ValueFunctionList
+from rl_shared import MLP, RunningMeanStdFilter, ValueFunction, ValueFunctionList
 import rl_shared as rl
-import time
+from policies import GaussianPolicy
 
 
 def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, aggreg_type='None', min_sample_per_iter=3000):
