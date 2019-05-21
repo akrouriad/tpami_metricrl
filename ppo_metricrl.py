@@ -8,7 +8,7 @@ import rllog
 from rl_shared import MLP, RunningMeanStdFilter, ValueFunction, ValueFunctionList
 import rl_shared as rl
 from policies import MetricPolicy
-
+import gaussian_proj as proj
 
 def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, aggreg_type='Min', min_sample_per_iter=3000):
     print('Metric RL')
@@ -78,6 +78,8 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
         adv = (adv - np.mean(adv)) / (np.std(adv) + 1e-8)
 
         torch_adv = torch.tensor(adv, dtype=torch.float)
+        old_chol = policy_torch.get_chol()
+        old_means = policy_torch.get_weighted_means(obs)
         old_pol_dist = policy_torch.distribution(obs)
         old_log_p = policy_torch.log_prob(obs, act).detach()
         index = np.argmax(adv)
@@ -132,7 +134,9 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
         avgm = torch.mean(policy_torch.membership(obs), dim=0)
         # print('avg membership', avgm)
         print('avg membership', avgm[avgm > torch.max(avgm) / 100])
-
+        chol_u = proj.utils_from_chol(old_chol)
+        proj_u = proj.gauss_kl_proj(policy_torch.get_weighted_means(obs), policy_torch.get_chol(), old_means, chol_u['cov'], chol_u['prec'], chol_u['logdetcov'], .01)
+        print('init_kl {}, final_kl {}, eta_mean {}, eta_cov {}'.format(proj_u['init_kl'], proj_u['final_kl'], proj_u['eta_mean'], proj_u['eta_cov']))
 
 
 if __name__ == '__main__':

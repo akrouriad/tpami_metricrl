@@ -29,6 +29,20 @@ class GaussianPolicy(nn.Module):
         return torch.distributions.MultivariateNormal(loc=self.get_mean(x), covariance_matrix=cov)
 
 
+class Grad1Abs(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, input):
+        ctx.save_for_backward(input)
+        return input.abs()
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        input, = ctx.saved_tensors
+        grad_input = grad_output.clone()
+        grad_input[input < 0] = -grad_input[input < 0]
+        return grad_input
+
+
 class MetricPolicy(nn.Module):
     def __init__(self, a_dim):
         super().__init__()
@@ -51,7 +65,7 @@ class MetricPolicy(nn.Module):
         with torch.no_grad():
             # set init state as first center
             if self.centers is None:
-                self.centers = torch.tensor(s)[None, :]
+                self.centers = s.clone().detach()[None, :]
 
             return self.distribution(s).sample()
 
@@ -61,19 +75,27 @@ class MetricPolicy(nn.Module):
     def membership(self, s):
         # compute distances to cluster
         dist = torch.sum((s[:, None, :] - self.centers[None, :, :]) ** 2, dim=-1)
-        w = (self.rootweights ** 2) * torch.exp(-torch.exp(self.logtemp) * dist) + 1e-6
-        # w = torch.exp(-torch.exp(self.rootweights) * dist)
+        # w = (self.rootweights ** 2) * torch.exp(-torch.exp(self.logtemp) * dist) + 1e-6
+        # w = (torch.abs(self.rootweights) + (self.rootweights == 0.).float() * self.rootweights) * torch.exp(-torch.exp(self.logtemp) * dist) + 1e-6
+        w = Grad1Abs.apply(self.rootweights) * torch.exp(-torch.exp(self.logtemp) * dist) + 1e-6
         # w = torch.exp(-torch.exp(self.logtemp) * dist + self.rootweights)
         return w / torch.sum(w, dim=-1, keepdim=True)
 
     def distribution(self, s):
+        means = self.get_weighted_means(s)
+        return torch.distributions.MultivariateNormal(means, scale_tril=self.get_chol())
+
+    def get_weighted_means(self, s):
         if len(s.size()) == 1:
             s = s[None, :]
         w = self.membership(s)
 
-        # compute average mean
-        mean = w.matmul(self.means)
-        return torch.distributions.MultivariateNormal(mean, scale_tril=torch.diag(torch.exp(self.logsigs)))
+        # compute weighted means
+        return w.matmul(self.means)
+
+
+    def get_chol(self):
+        return torch.diag(torch.exp(self.logsigs))
 
     def entropy(self):
         a_dim = self.means.size()[1]
@@ -82,7 +104,7 @@ class MetricPolicy(nn.Module):
     def add_cluster(self, s, a):
         self.centers = torch.cat([self.centers, s])
         self.means_list.append(nn.Parameter(a))
-        # self.rootweights_list.append(nn.Parameter(torch.tensor([0.])))
-        self.rootweights_list.append(nn.Parameter(torch.tensor([1e-2])))
+        self.rootweights_list.append(nn.Parameter(torch.tensor([0.])))
+        # self.rootweights_list.append(nn.Parameter(torch.tensor([-100.])))
         # self.rootweights_list.append(nn.Parameter(torch.tensor([-2.])))
         self.cat_params()
