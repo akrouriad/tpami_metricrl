@@ -54,9 +54,9 @@ class MetricPolicy(nn.Module):
         self.logtemp = nn.Parameter(torch.tensor(0.))
         # self.logtemp = torch.tensor(0.)
         self.rootweights = self.means = None
-        self.cat_params()
+        self.update_clustering()
 
-    def cat_params(self):
+    def update_clustering(self):
         # to speed up computation
         self.rootweights = torch.cat([*self.rootweights_list.parameters()])
         self.means = torch.cat([*self.means_list.parameters()])
@@ -73,13 +73,17 @@ class MetricPolicy(nn.Module):
         return self.distribution(s).log_prob(a)[:, None]
 
     def membership(self, s):
+        w = self.unormalized_membership(s)
+        return w / torch.sum(w, dim=-1, keepdim=True)
+
+    def unormalized_membership(self, s):
         # compute distances to cluster
         dist = torch.sum((s[:, None, :] - self.centers[None, :, :]) ** 2, dim=-1)
         # w = (self.rootweights ** 2) * torch.exp(-torch.exp(self.logtemp) * dist) + 1e-6
         # w = (torch.abs(self.rootweights) + (self.rootweights == 0.).float() * self.rootweights) * torch.exp(-torch.exp(self.logtemp) * dist) + 1e-6
         w = Grad1Abs.apply(self.rootweights) * torch.exp(-torch.exp(self.logtemp) * dist) + 1e-6
         # w = torch.exp(-torch.exp(self.logtemp) * dist + self.rootweights)
-        return w / torch.sum(w, dim=-1, keepdim=True)
+        return w
 
     def distribution(self, s):
         means = self.get_weighted_means(s)
@@ -107,4 +111,4 @@ class MetricPolicy(nn.Module):
         self.rootweights_list.append(nn.Parameter(torch.tensor([0.])))
         # self.rootweights_list.append(nn.Parameter(torch.tensor([-100.])))
         # self.rootweights_list.append(nn.Parameter(torch.tensor([-2.])))
-        self.cat_params()
+        self.update_clustering()

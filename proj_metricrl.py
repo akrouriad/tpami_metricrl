@@ -23,7 +23,8 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
     lr_v = 3e-4
     lr_p = 1e-3
     nb_epochs_v = 10
-    nb_epochs_p = 10
+    nb_epochs_params = 10
+    nb_epochs_clus = 10
     max_kl = .034
 
     s_dim = env.observation_space.shape[0]
@@ -78,7 +79,10 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
         adv = (adv - np.mean(adv)) / (np.std(adv) + 1e-8)
 
         torch_adv = torch.tensor(adv, dtype=torch.float)
-        old_pol_dist = policy_torch.distribution(obs)
+        old_chol = policy_torch.get_chol().detach()
+        wq = policy_torch.unormalized_membership(obs).detach()
+        old_means = policy_torch.get_weighted_means(obs).detach()
+        old_pol_dist = policy_torch.distribution(obs).detach()
         old_log_p = policy_torch.log_prob(obs, act).detach()
         index = np.argmax(adv)
         if iter % 3 == 0:
@@ -102,26 +106,39 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
         # compute update filter, v_values and policy
         if norma == 'All' or norma == 'Obs':
             obs_filter.update(obs)
-        for epoch in range(max(nb_epochs_v, nb_epochs_p)):
+        for epoch in range(nb_epochs_v):
             for batch_idx in dat.next_batch_idx(h_layer_width, iter_ts):
                 # update value network
-                if epoch < nb_epochs_v:
-                    for kv in range(nb_vfunc):
-                        value_optim[kv].zero_grad()
-                        mse = F.mse_loss(value_fct[kv](obs[batch_idx]), torch_targets[batch_idx])
-                        mse.backward()
-                        value_optim[kv].step()
+                for kv in range(nb_vfunc):
+                    value_optim[kv].zero_grad()
+                    mse = F.mse_loss(value_fct[kv](obs[batch_idx]), torch_targets[batch_idx])
+                    mse.backward()
+                    value_optim[kv].step()
 
+        for epoch in range(nb_epochs_clus):
+            for batch_idx in dat.next_batch_idx(h_layer_width, iter_ts):
                 # update policy
-                if epoch < nb_epochs_p:
-                    p_optim.zero_grad()
-                    prob_ratio = torch.exp(policy_torch.log_prob(obs[batch_idx], act[batch_idx]) - old_log_p[batch_idx])
-                    eps_ppo = .2
-                    clipped_ratio = torch.clamp(prob_ratio, 1 - eps_ppo, 1 + eps_ppo)
-                    loss = -torch.mean(torch.min(prob_ratio * torch_adv[batch_idx], clipped_ratio * torch_adv[batch_idx]))
-                    loss.backward()
-                    p_optim.step()
-                    policy_torch.update_clustering()
+                p_optim.zero_grad()
+                prob_ratio = torch.exp(policy_torch.log_prob(obs[batch_idx], act[batch_idx]) - old_log_p[batch_idx])
+                eps_ppo = .2
+                clipped_ratio = torch.clamp(prob_ratio, 1 - eps_ppo, 1 + eps_ppo)
+                loss = -torch.mean(torch.min(prob_ratio * torch_adv[batch_idx], clipped_ratio * torch_adv[batch_idx]))
+                loss.backward()
+                p_optim.step()
+                policy_torch.update_clustering()
+
+        for epoch in range(nb_epochs_params):
+            for batch_idx in dat.next_batch_idx(h_layer_width, iter_ts):
+                # update policy
+                p_optim.zero_grad()
+                prob_ratio = torch.exp(policy_torch.log_prob(obs[batch_idx], act[batch_idx]) - old_log_p[batch_idx])
+                eps_ppo = .2
+                clipped_ratio = torch.clamp(prob_ratio, 1 - eps_ppo, 1 + eps_ppo)
+                loss = -torch.mean(torch.min(prob_ratio * torch_adv[batch_idx], clipped_ratio * torch_adv[batch_idx]))
+                loss.backward()
+                p_optim.step()
+                policy_torch.update_clustering()
+
 
         new_pol_dist = policy_torch.distribution(obs)
         logging_kl = torch.mean(torch.distributions.kl_divergence(new_pol_dist, old_pol_dist))
@@ -132,6 +149,9 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
         avgm = torch.mean(policy_torch.membership(obs), dim=0)
         # print('avg membership', avgm)
         print('avg membership', avgm[avgm > torch.max(avgm) / 100])
+        chol_u = proj.utils_from_chol(old_chol)
+        proj_u = proj.gauss_kl_proj(policy_torch.get_weighted_means(obs), policy_torch.get_chol(), old_means, chol_u['cov'], chol_u['prec'], chol_u['logdetcov'], .01)
+        print('init_kl {}, final_kl {}, eta_mean {}, eta_cov {}'.format(proj_u['init_kl'], proj_u['final_kl'], proj_u['eta_mean'], proj_u['eta_cov']))
 
 
 if __name__ == '__main__':
