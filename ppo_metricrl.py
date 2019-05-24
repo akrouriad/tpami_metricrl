@@ -85,8 +85,8 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
         # if adv[index] > 1.5:
             # add new cluster
             policy_torch.add_cluster(obs[[index]], act[[index]])
-            p_optim.add_param_group({"params": [policy_torch.rootweights_list[-1], policy_torch.means_list[-1]]})
-            print('--> adding new cluster. Adv {}, cluster count {}'.format(adv[index], len(policy_torch.rootweights)))
+            p_optim.add_param_group({"params": [policy_torch.cweights_list[-1], policy_torch.means_list[-1]]})
+            print('--> adding new cluster. Adv {}, cluster count {}'.format(adv[index], len(policy_torch.cweights)))
             klcluster = torch.mean(torch.distributions.kl_divergence(policy_torch.distribution(obs), old_pol_dist))
             print('--> KL after adding cluster', klcluster)
 

@@ -46,19 +46,20 @@ class Grad1Abs(torch.autograd.Function):
 class MetricPolicy(nn.Module):
     def __init__(self, a_dim):
         super().__init__()
+        self.a_dim = a_dim
         self.centers = None
         # self.rootweights_list = nn.ParameterList().append(nn.Parameter(torch.tensor([0.])))
-        self.rootweights_list = nn.ParameterList().append(nn.Parameter(torch.tensor([1.])))
+        self.cweights_list = nn.ParameterList().append(nn.Parameter(torch.tensor([1.])))
         self.means_list = nn.ParameterList().append(nn.Parameter(torch.zeros(1, a_dim)))
         self.logsigs = nn.Parameter(torch.zeros(a_dim))
-        self.logtemp = nn.Parameter(torch.tensor(0.))
-        # self.logtemp = torch.tensor(0.)
-        self.rootweights = self.means = None
+        # self.logtemp = nn.Parameter(torch.tensor(0.))
+        self.logtemp = torch.tensor(0.)
+        self.cweights = self.means = None
         self.update_clustering()
 
     def update_clustering(self):
         # to speed up computation
-        self.rootweights = torch.cat([*self.rootweights_list.parameters()])
+        self.cweights = torch.cat([*self.cweights_list.parameters()])
         self.means = torch.cat([*self.means_list.parameters()])
 
     def forward(self, s):
@@ -81,7 +82,7 @@ class MetricPolicy(nn.Module):
         dist = torch.sum((s[:, None, :] - self.centers[None, :, :]) ** 2, dim=-1)
         # w = (self.rootweights ** 2) * torch.exp(-torch.exp(self.logtemp) * dist) + 1e-6
         # w = (torch.abs(self.rootweights) + (self.rootweights == 0.).float() * self.rootweights) * torch.exp(-torch.exp(self.logtemp) * dist) + 1e-6
-        w = Grad1Abs.apply(self.rootweights) * torch.exp(-torch.exp(self.logtemp) * dist) + 1e-6
+        w = Grad1Abs.apply(self.cweights) * torch.exp(-torch.exp(self.logtemp) * dist) + 1e-6
         # w = torch.exp(-torch.exp(self.logtemp) * dist + self.rootweights)
         return w
 
@@ -102,13 +103,12 @@ class MetricPolicy(nn.Module):
         return torch.diag(torch.exp(self.logsigs))
 
     def entropy(self):
-        a_dim = self.means.size()[1]
-        return a_dim / 2 * np.log(2 * np.pi * np.e) + torch.sum(self.logsigs).detach().numpy()
+        return self.a_dim / 2 * np.log(2 * np.pi * np.e) + torch.sum(self.logsigs).detach().numpy()
 
     def add_cluster(self, s, a):
         self.centers = torch.cat([self.centers, s])
         self.means_list.append(nn.Parameter(a))
-        self.rootweights_list.append(nn.Parameter(torch.tensor([0.])))
+        self.cweights_list.append(nn.Parameter(torch.tensor([0.])))
         # self.rootweights_list.append(nn.Parameter(torch.tensor([-100.])))
         # self.rootweights_list.append(nn.Parameter(torch.tensor([-2.])))
         self.update_clustering()

@@ -9,6 +9,8 @@ from rl_shared import MLP, RunningMeanStdFilter, ValueFunction, ValueFunctionLis
 import rl_shared as rl
 from policies import MetricPolicy
 import gaussian_proj as proj
+from cluster_weight_proj import cweight_mean_proj
+
 
 def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, aggreg_type='Min', min_sample_per_iter=3000):
     print('Metric RL')
@@ -25,7 +27,7 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
     nb_epochs_v = 10
     nb_epochs_params = 10
     nb_epochs_clus = 10
-    max_kl = .034
+    max_kl = .015
 
     s_dim = env.observation_space.shape[0]
     a_dim = env.action_space.shape[0]
@@ -44,7 +46,8 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
 
     policy_torch = MetricPolicy(a_dim)
     policy = lambda obs: torch.squeeze(policy_torch(torch.tensor(obs, dtype=torch.float)), dim=0).detach().numpy()
-    p_optim = torch.optim.Adam(policy_torch.parameters(), lr=lr_p)
+    cw_optim = torch.optim.Adam(policy_torch.cweights_list.parameters(), lr=lr_p)
+    p_optim = torch.optim.Adam([par for par in policy_torch.means_list.parameters()] + [policy_torch.logsigs], lr=lr_p)
 
     discount = .99
     lam = .95
@@ -70,36 +73,41 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
 
         # update policy and v
         if aggreg_type == 'None':
-            adv = rl.get_adv(v_func=value_fct[0], obs=p_paths['obs'], rwd=rwd.numpy(), done=p_paths['done'],
+            np_adv = rl.get_adv(v_func=value_fct[0], obs=p_paths['obs'], rwd=rwd.numpy(), done=p_paths['done'],
                              discount=discount, lam=lam)
         else:
             aggreg_dic = {'Max': torch.max, 'Min': torch.min, 'Median': torch.median, 'Mean': torch.mean}
-            adv = rl.get_adv(v_func=lambda obs: value_from_list(obs, reduce_fct=aggreg_dic[aggreg_type]), obs=p_paths['obs'],
+            np_adv = rl.get_adv(v_func=lambda obs: value_from_list(obs, reduce_fct=aggreg_dic[aggreg_type]), obs=p_paths['obs'],
                              rwd=rwd.numpy(), done=p_paths['done'], discount=discount, lam=lam)
-        adv = (adv - np.mean(adv)) / (np.std(adv) + 1e-8)
+        np_adv = (np_adv - np.mean(np_adv)) / (np.std(np_adv) + 1e-8)
+        adv = torch.tensor(np_adv, dtype=torch.float)
 
-        torch_adv = torch.tensor(adv, dtype=torch.float)
         old_chol = policy_torch.get_chol().detach()
         wq = policy_torch.unormalized_membership(obs).detach()
+        old_cweights = policy_torch.cweights.detach()
+        old_cmeans = policy_torch.means.detach()
         old_means = policy_torch.get_weighted_means(obs).detach()
-        old_pol_dist = policy_torch.distribution(obs).detach()
+        old_pol_dist = policy_torch.distribution(obs)
         old_log_p = policy_torch.log_prob(obs, act).detach()
-        index = np.argmax(adv)
+
         if iter % 3 == 0:
         # if adv[index] > 1.5:
             # add new cluster
+            index = np.argmax(np_adv)
             policy_torch.add_cluster(obs[[index]], act[[index]])
-            p_optim.add_param_group({"params": [policy_torch.rootweights_list[-1], policy_torch.means_list[-1]]})
-            print('--> adding new cluster. Adv {}, cluster count {}'.format(adv[index], len(policy_torch.rootweights)))
+            cw_optim.add_param_group({"params": [policy_torch.cweights_list[-1]]})
+            p_optim.add_param_group({"params": [policy_torch.means_list[-1]]})
+            print('--> adding new cluster. Adv {}, cluster count {}'.format(np_adv[index], len(policy_torch.cweights)))
             klcluster = torch.mean(torch.distributions.kl_divergence(policy_torch.distribution(obs), old_pol_dist))
             print('--> KL after adding cluster', klcluster)
+            old_cweights = torch.cat([old_cweights, torch.tensor([0.])])
+            old_cmeans = torch.cat([old_cmeans, torch.zeros(1, policy_torch.a_dim)])
 
-
-        v_target, _ = rl.get_targets(value_from_list, p_paths['obs'], rwd.numpy(), p_paths['done'], discount, lam)
-        torch_targets = torch.tensor(v_target, dtype=torch.float)
+        np_v_target, _ = rl.get_targets(value_from_list, p_paths['obs'], rwd.numpy(), p_paths['done'], discount, lam)
+        v_targets = torch.tensor(np_v_target, dtype=torch.float)
 
         logging_ent = policy_torch.entropy()
-        logging_verr = F.mse_loss(value_fct[0](obs), torch_targets)
+        logging_verr = F.mse_loss(value_fct[0](obs), v_targets)
 
         if cum_ts > max_ts:
             break
@@ -111,34 +119,67 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
                 # update value network
                 for kv in range(nb_vfunc):
                     value_optim[kv].zero_grad()
-                    mse = F.mse_loss(value_fct[kv](obs[batch_idx]), torch_targets[batch_idx])
+                    mse = F.mse_loss(value_fct[kv](obs[batch_idx]), v_targets[batch_idx])
                     mse.backward()
                     value_optim[kv].step()
 
+        old_cov_d = proj.utils_from_chol(old_chol)
+
+        # update cluster weights
         for epoch in range(nb_epochs_clus):
             for batch_idx in dat.next_batch_idx(h_layer_width, iter_ts):
-                # update policy
-                p_optim.zero_grad()
+                cw_optim.zero_grad()
+                w = policy_torch.unormalized_membership(obs[batch_idx])
+                means = (w / torch.sum(w, dim=-1, keepdim=True)).mm(policy_torch.means)
+                eta = cweight_mean_proj(w, means, wq[batch_idx], old_means[batch_idx], old_cov_d['prec'], max_kl)
+                policy_torch.cweights = eta * policy_torch.cweights + (1 - eta) * old_cweights
                 prob_ratio = torch.exp(policy_torch.log_prob(obs[batch_idx], act[batch_idx]) - old_log_p[batch_idx])
-                eps_ppo = .2
-                clipped_ratio = torch.clamp(prob_ratio, 1 - eps_ppo, 1 + eps_ppo)
-                loss = -torch.mean(torch.min(prob_ratio * torch_adv[batch_idx], clipped_ratio * torch_adv[batch_idx]))
+                loss = -torch.mean(prob_ratio * adv[batch_idx])
                 loss.backward()
-                p_optim.step()
+                cw_optim.step()
                 policy_torch.update_clustering()
 
+        # overriding the cluster weights with the projected ones
+        w = policy_torch.unormalized_membership(obs)
+        means = policy_torch.get_weighted_means(obs)
+        eta = cweight_mean_proj(w, means, wq, old_means, old_cov_d['prec'], max_kl)
+        cweights = eta * policy_torch.cweights + (1 - eta) * old_cweights
+        for k, cwp in enumerate(policy_torch.cweights_list):
+            cwp.data = cweights[[k]]
+        policy_torch.update_clustering()
+
+        new_pol_dist = policy_torch.distribution(obs)
+        logging_kl = torch.mean(torch.distributions.kl_divergence(new_pol_dist, old_pol_dist))
+        print('kl after cweight update:', logging_kl)
+        if logging_kl > max_kl:
+            print('y')
+        # update sub-policies means and cov
+        intermediate_means = policy_torch.get_weighted_means(obs).detach()
         for epoch in range(nb_epochs_params):
             for batch_idx in dat.next_batch_idx(h_layer_width, iter_ts):
-                # update policy
                 p_optim.zero_grad()
-                prob_ratio = torch.exp(policy_torch.log_prob(obs[batch_idx], act[batch_idx]) - old_log_p[batch_idx])
-                eps_ppo = .2
-                clipped_ratio = torch.clamp(prob_ratio, 1 - eps_ppo, 1 + eps_ppo)
-                loss = -torch.mean(torch.min(prob_ratio * torch_adv[batch_idx], clipped_ratio * torch_adv[batch_idx]))
+                means = policy_torch.get_weighted_means(obs[batch_idx])
+                chol = policy_torch.get_chol()
+                proj_d = proj.lin_gauss_kl_proj(means, chol, intermediate_means[batch_idx], old_means[batch_idx], old_cov_d['cov'], old_cov_d['prec'], old_cov_d['logdetcov'], max_kl)
+                proj_distrib = torch.distributions.MultivariateNormal(proj_d['means'], scale_tril=proj_d['chol'])
+                prob_ratio = torch.exp(proj_distrib.log_prob(act[batch_idx])[:, None] - old_log_p[batch_idx])
+                loss = -torch.mean(prob_ratio * adv[batch_idx])
                 loss.backward()
                 p_optim.step()
                 policy_torch.update_clustering()
 
+        # overriding means and chol with projected ones
+        means = policy_torch.get_weighted_means(obs)
+        chol = policy_torch.get_chol()
+        proj_d = proj.lin_gauss_kl_proj(means, chol, intermediate_means, old_means,
+                                        old_cov_d['cov'], old_cov_d['prec'], old_cov_d['logdetcov'], max_kl)
+        cmeans = proj_d['eta_mean'] * policy_torch.means + (1 - proj_d['eta_mean']) * old_cmeans
+        for k, cmp in enumerate(policy_torch.means_list):
+            cmp.data = cmeans[[k]]
+        policy_torch.logsigs.data = torch.log(torch.diag(proj_d['chol']))
+        policy_torch.update_clustering()
+
+        print('init_kl {}, final_kl {}, eta_mean {}, eta_cov {}'.format(proj_d['init_kl'], proj_d['final_kl'], proj_d['eta_mean'], proj_d['eta_cov']))
 
         new_pol_dist = policy_torch.distribution(obs)
         logging_kl = torch.mean(torch.distributions.kl_divergence(new_pol_dist, old_pol_dist))
@@ -149,9 +190,6 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
         avgm = torch.mean(policy_torch.membership(obs), dim=0)
         # print('avg membership', avgm)
         print('avg membership', avgm[avgm > torch.max(avgm) / 100])
-        chol_u = proj.utils_from_chol(old_chol)
-        proj_u = proj.gauss_kl_proj(policy_torch.get_weighted_means(obs), policy_torch.get_chol(), old_means, chol_u['cov'], chol_u['prec'], chol_u['logdetcov'], .01)
-        print('init_kl {}, final_kl {}, eta_mean {}, eta_cov {}'.format(proj_u['init_kl'], proj_u['final_kl'], proj_u['eta_mean'], proj_u['eta_cov']))
 
 
 if __name__ == '__main__':

@@ -3,8 +3,7 @@ import numpy as np
 from gaussian_proj import mean_diff
 
 
-def cweight_mean_proj(w, mean_mat, wq, old_means, old_prec, epsilon):
-    means = w.mm(mean_mat)
+def cweight_mean_proj(w, means, wq, old_means, old_prec, epsilon):
     mw = mean_diff(means, old_means, old_prec)
     eta = torch.tensor(1.)
     if mw > epsilon + 1e-6:
