@@ -23,11 +23,11 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
     h_layer_width = 64
     h_layer_length = 2
     lr_v = 3e-4
-    lr_p = 1e-3
+    lr_p = 1e-1
     nb_epochs_v = 10
     batch_size_pupdate = 64
-    nb_epochs_params = 40
     nb_epochs_clus = 40
+    nb_epochs_params = 5
     max_kl = .015
 
     s_dim = env.observation_space.shape[0]
