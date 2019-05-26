@@ -1,9 +1,9 @@
 import torch
 
 
-def mean_diff(mu, old_mu, old_prec):
+def mean_diff(mu, old_mu, old_prec, s_weights=None):
     mud = mu - old_mu
-    return cross_mul(mud, old_prec, mud)
+    return cross_mul(mud, old_prec, mud, s_weights)
 
 
 def entropy_diff(chol, old_logdetcov):
@@ -15,8 +15,11 @@ def rot_diff(cov, old_prec):
     return .5 * (torch.sum(old_prec * cov) - dim)
 
 
-def cross_mul(l, mat, r):
-    return .5 * torch.mean(torch.sum(torch.sum(l[:, :, None] * mat, dim=1) * r, dim=1, keepdim=True))
+def cross_mul(l, mat, r, s_weights=None):
+    if s_weights is None:
+        return .5 * torch.mean(torch.sum(torch.sum(l[:, :, None] * mat, dim=1) * r, dim=1, keepdim=True))
+    else:
+        return .5 * torch.mean(s_weights * torch.sum(torch.sum(l[:, :, None] * mat, dim=1) * r, dim=1))
 
 
 def utils_from_chol(chol):

@@ -9,7 +9,6 @@ def cweight_mean_proj(w, means, wq, old_means, old_prec, epsilon):
     if mw > epsilon + 1e-6:
         w2 = torch.sum(w ** 2, dim=1)
         wq2 = torch.sum(wq ** 2, dim=1)
-        w_ratio = torch.mean(torch.clamp(w2 / wq2, min=1.))
-        eta = torch.sqrt(epsilon / mw / w_ratio)
-
+        w_ratio = torch.clamp(w2 / wq2, min=1.)
+        eta = torch.sqrt(epsilon / mean_diff(means, old_means, old_prec, s_weights=w_ratio))
     return eta

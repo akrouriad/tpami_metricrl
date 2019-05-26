@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 import gym
-import roboschool
+# import roboschool
 import data_handling as dat
 import rllog
 from rl_shared import MLP, RunningMeanStdFilter, ValueFunction, ValueFunctionList
@@ -25,8 +25,9 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
     lr_v = 3e-4
     lr_p = 1e-3
     nb_epochs_v = 10
-    nb_epochs_params = 10
-    nb_epochs_clus = 10
+    batch_size_pupdate = 64
+    nb_epochs_params = 40
+    nb_epochs_clus = 40
     max_kl = .015
 
     s_dim = env.observation_space.shape[0]
@@ -127,7 +128,7 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
 
         # update cluster weights
         for epoch in range(nb_epochs_clus):
-            for batch_idx in dat.next_batch_idx(h_layer_width, iter_ts):
+            for batch_idx in dat.next_batch_idx(batch_size_pupdate, iter_ts):
                 cw_optim.zero_grad()
                 w = policy_torch.unormalized_membership(obs[batch_idx])
                 means = (w / torch.sum(w, dim=-1, keepdim=True)).mm(policy_torch.means)
@@ -156,7 +157,7 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
         # update sub-policies means and cov
         intermediate_means = policy_torch.get_weighted_means(obs).detach()
         for epoch in range(nb_epochs_params):
-            for batch_idx in dat.next_batch_idx(h_layer_width, iter_ts):
+            for batch_idx in dat.next_batch_idx(batch_size_pupdate, iter_ts):
                 p_optim.zero_grad()
                 means = policy_torch.get_weighted_means(obs[batch_idx])
                 chol = policy_torch.get_chol()
