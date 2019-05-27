@@ -82,7 +82,7 @@ class MetricPolicy(nn.Module):
         dist = torch.sum((s[:, None, :] - self.centers[None, :, :]) ** 2, dim=-1)
         # w = (self.rootweights ** 2) * torch.exp(-torch.exp(self.logtemp) * dist) + 1e-6
         # w = (torch.abs(self.rootweights) + (self.rootweights == 0.).float() * self.rootweights) * torch.exp(-torch.exp(self.logtemp) * dist) + 1e-6
-        w = Grad1Abs.apply(self.cweights) * torch.exp(-torch.exp(self.logtemp) * dist) + 1e-6
+        w = Grad1Abs.apply(self.cweights) * torch.exp(-torch.exp(self.logtemp) * dist)
         # w = torch.exp(-torch.exp(self.logtemp) * dist + self.rootweights)
         return w
 
@@ -97,7 +97,6 @@ class MetricPolicy(nn.Module):
 
         # compute weighted means
         return w.matmul(self.means)
-
 
     def get_chol(self):
         return torch.diag(torch.exp(self.logsigs))

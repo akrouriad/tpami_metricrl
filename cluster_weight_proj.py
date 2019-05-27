@@ -7,8 +7,13 @@ def cweight_mean_proj(w, means, wq, old_means, old_prec, epsilon):
     mw = mean_diff(means, old_means, old_prec)
     eta = torch.tensor(1.)
     if mw > epsilon + 1e-6:
-        w2 = torch.sum(w ** 2, dim=1)
-        wq2 = torch.sum(wq ** 2, dim=1)
-        w_ratio = torch.clamp(w2 / wq2, min=1.)
-        eta = torch.sqrt(epsilon / mean_diff(means, old_means, old_prec, s_weights=w_ratio))
+        nw = torch.sum(w, dim=1)
+        nwq = torch.sum(wq, dim=1)
+        nw2 = nw ** 2
+        nwq2 = nwq ** 2
+        w_ratio = torch.clamp(nw2 / nwq2, min=1.)
+        eta1 = torch.sqrt(epsilon / mean_diff(means, old_means, old_prec, s_weights=w_ratio))
+        w_ratio = nw2 / (nwq2 + 2 * nwq * (nw - nwq))
+        eta2 = epsilon / mean_diff(means, old_means, old_prec, s_weights=w_ratio)
+        eta = torch.max(eta1, eta2)
     return eta
