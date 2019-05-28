@@ -9,7 +9,21 @@ from rl_shared import MLP, RunningMeanStdFilter, ValueFunction, ValueFunctionLis
 import rl_shared as rl
 from policies import MetricPolicy
 import gaussian_proj as proj
-from cluster_weight_proj import cweight_mean_proj
+from cluster_weight_proj import cweight_mean_proj, ls_cweight_mean_proj
+
+
+class TwoPhaseEntropProfile:
+    def __init__(self, policy, e_reduc):
+        self.init_entropy = policy.entropy()
+        self._policy = policy
+        self._e_reduc = e_reduc
+
+    def get_e_lb(self):
+        if self._policy.entropy() > self.init_entropy / 2:
+            return -10000.
+        else:
+            return self._policy.entropy() - self._e_reduc
+
 
 
 def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, aggreg_type='Min', min_sample_per_iter=3000):
@@ -50,6 +64,7 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
     policy = lambda obs: torch.squeeze(policy_torch(torch.tensor(obs, dtype=torch.float)), dim=0).detach().numpy()
     cw_optim = torch.optim.Adam(policy_torch.cweights_list.parameters(), lr=lr_p)
     p_optim = torch.optim.Adam([par for par in policy_torch.means_list.parameters()] + [policy_torch.logsigs], lr=lr_p)
+    e_profile = TwoPhaseEntropProfile(policy_torch, max_kl)
 
     discount = .99
     lam = .95
@@ -91,6 +106,7 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
         old_means = policy_torch.get_weighted_means(obs).detach()
         old_pol_dist = policy_torch.distribution(obs)
         old_log_p = policy_torch.log_prob(obs, act).detach()
+        e_lb = e_profile.get_e_lb()
 
         if iter % 3 == 0:
         # if adv[index] > 1.5:
@@ -135,6 +151,7 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
                 cw_optim.zero_grad()
                 w = policy_torch.unormalized_membership(obs[batch_idx])
                 means = (w / torch.sum(w, dim=-1, keepdim=True)).mm(policy_torch.means)
+                # eta = ls_cweight_mean_proj(w, means, wq[batch_idx], old_means[batch_idx], old_cov_d['prec'], kl_cluster, cmeans=old_cmeans)
                 eta = cweight_mean_proj(w, means, wq[batch_idx], old_means[batch_idx], old_cov_d['prec'], kl_cluster)
                 policy_torch.cweights = eta * policy_torch.cweights + (1 - eta) * old_cweights
                 prob_ratio = torch.exp(policy_torch.log_prob(obs[batch_idx], act[batch_idx]) - old_log_p[batch_idx])
@@ -147,6 +164,7 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
         w = policy_torch.unormalized_membership(obs)
         means = policy_torch.get_weighted_means(obs)
         init_kl = proj.mean_diff(means, old_means, old_cov_d['prec'])
+        # eta = ls_cweight_mean_proj(w, means, wq, old_means, old_cov_d['prec'], kl_cluster, cmeans=old_cmeans)
         eta = cweight_mean_proj(w, means, wq, old_means, old_cov_d['prec'], kl_cluster)
         weta = eta * w + (1. - eta) * wq
         weta /= torch.sum(weta, dim=1, keepdim=True)
@@ -172,7 +190,7 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
                     p_optim.zero_grad()
                     means = policy_torch.get_weighted_means(obs[batch_idx])
                     chol = policy_torch.get_chol()
-                    proj_d = proj.lin_gauss_kl_proj(means, chol, intermediate_means[batch_idx], old_means[batch_idx], old_cov_d['cov'], old_cov_d['prec'], old_cov_d['logdetcov'], max_kl)
+                    proj_d = proj.lin_gauss_kl_proj(means, chol, intermediate_means[batch_idx], old_means[batch_idx], old_cov_d['cov'], old_cov_d['prec'], old_cov_d['logdetcov'], max_kl, e_lb)
                     proj_distrib = torch.distributions.MultivariateNormal(proj_d['means'], scale_tril=proj_d['chol'])
                     prob_ratio = torch.exp(proj_distrib.log_prob(act[batch_idx])[:, None] - old_log_p[batch_idx])
                     loss = -torch.mean(prob_ratio * adv[batch_idx])
@@ -184,7 +202,7 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
         means = policy_torch.get_weighted_means(obs)
         chol = policy_torch.get_chol()
         proj_d = proj.lin_gauss_kl_proj(means, chol, intermediate_means, old_means,
-                                        old_cov_d['cov'], old_cov_d['prec'], old_cov_d['logdetcov'], max_kl)
+                                        old_cov_d['cov'], old_cov_d['prec'], old_cov_d['logdetcov'], max_kl, e_lb)
         cmeans = proj_d['eta_mean'] * policy_torch.means + (1 - proj_d['eta_mean']) * old_cmeans
         # if proj_d['eta_mean'] < 1.:
         #     print('eta_mean', proj_d['eta_mean'])
@@ -201,7 +219,7 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
         new_pol_dist = policy_torch.distribution(obs)
         logging_kl = torch.mean(torch.distributions.kl_divergence(new_pol_dist, old_pol_dist))
         iter += 1
-        print("iter {}: rewards {} entropy {} vf_loss {} kl {}".format(iter, avg_rwd, logging_ent, logging_verr, logging_kl))
+        print("iter {}: rewards {} entropy {} vf_loss {} kl {} e_lb {}".format(iter, avg_rwd, logging_ent, logging_verr, logging_kl, e_lb))
         # print(policy_torch.rootweights)
         # print(torch.exp(policy_torch.logtemp))
         avgm = torch.mean(policy_torch.membership(obs), dim=0)

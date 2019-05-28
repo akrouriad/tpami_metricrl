@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 
 
 def mean_diff(mu, old_mu, old_prec, s_weights=None):
@@ -55,8 +56,21 @@ def gauss_kl_proj(means, chol, old_means, old_cov, old_prec, old_logdetcov, epsi
     return {'eta_mean': eta_mean, 'eta_cov': eta_cov, 'means': means, 'chol': chol, 'init_kl': init_kl, 'final_kl': final_kl}
 
 
-def lin_gauss_kl_proj(means, chol, intermediate_means, old_means, old_cov, old_prec, old_logdetcov, epsilon):
+def entropy(chol):
+    a_dim = chol.size()[0]
+    return a_dim / 2 * np.log(2 * np.pi * np.e) + torch.sum(torch.log(torch.diag(chol)))
+
+
+def project_entrop(chol, e_lb):
+    ent = entropy(chol)
+    if ent < e_lb:
+        a_dim = chol.size()[0]
+        chol *= torch.exp((e_lb - ent) / a_dim)
+    return chol
+
+def lin_gauss_kl_proj(means, chol, intermediate_means, old_means, old_cov, old_prec, old_logdetcov, epsilon, entrop_lb):
     # KL violation
+    chol = project_entrop(chol, entrop_lb)
     cov = chol.mm(chol.t())
     m = mean_diff(means, old_means, old_prec)
     r = rot_diff(cov, old_prec)
@@ -86,8 +100,9 @@ def lin_gauss_kl_proj(means, chol, intermediate_means, old_means, old_cov, old_p
     return {'eta_mean': eta_mean, 'eta_cov': eta_cov, 'means': means, 'chol': chol, 'init_kl': init_kl, 'final_kl': final_kl}
 
 
-def ls_lin_gauss_kl_proj(means, chol, intermediate_means, old_means, old_cov, old_prec, old_logdetcov, epsilon, lstimes=10):
+def ls_lin_gauss_kl_proj(means, chol, intermediate_means, old_means, old_cov, old_prec, old_logdetcov, epsilon, entrop_lb, lstimes=10):
     # KL violation
+    chol = project_entrop(chol, entrop_lb)
     cov = chol.mm(chol.t())
     m = mean_diff(means, old_means, old_prec)
     r = rot_diff(cov, old_prec)
