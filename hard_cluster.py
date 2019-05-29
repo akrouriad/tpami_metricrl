@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 from torch.autograd import Function
 
@@ -9,13 +10,11 @@ class HardClusterMembership(Function):
     """
     @staticmethod
     def forward(ctx, input, weights):
-        ctx.save_for_backward(input, weights)
         values = input.mm(torch.diag(weights))
-        print('values', values)
         max_values = values.argmax(1)
-        print('max_values_indices', max_values)
+        ctx.save_for_backward(input, weights, values, max_values)
         clusters = torch.zeros(input.size()).scatter_(1, max_values.unsqueeze(1), 1)
-        print('clusters', max_values)
+
         return clusters
 
     @staticmethod
@@ -27,4 +26,27 @@ class HardClusterMembership(Function):
         :param grad_output:
         :return:
         """
-        pass
+        input, weights, values, max_values = ctx.saved_tensors
+
+        n_clusters = input.shape[1]
+
+        grad = torch.zero([n_clusters, n_clusters])
+
+        for c in range(n_clusters):
+            eps_min = 0
+            eps_max = 0
+
+            for i, x in enumerate(input):
+                if max_values[i] == c:
+                    v2 = torch.topk(values[i], 2).values[1]
+                    delta = weights[c] - v2 / x[c]
+                    eps_min = np.min(eps_min, delta)
+                else:
+                    v2 = torch.max(values[i])
+                    delta = v2 / x[c] - weights[c]
+                    eps_max = np.min(eps_max, delta)
+
+            
+
+
+        return grad.mm(grad_output)
