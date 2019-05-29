@@ -117,7 +117,7 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
             p_optim.add_param_group({"params": [policy_torch.means_list[-1]]})
             print('--> adding new cluster. Adv {}, cluster count {}'.format(np_adv[index], len(policy_torch.cweights)))
             klcluster = torch.mean(torch.distributions.kl_divergence(policy_torch.distribution(obs), old_pol_dist))
-            print('--> KL after adding cluster', klcluster)
+            # print('--> KL after adding cluster', klcluster)
             old_cweights = torch.cat([old_cweights, torch.tensor([0.])])
             old_cmeans = torch.cat([old_cmeans, act[[index]]])
             wq = torch.cat([wq, torch.zeros(wq.size()[0], 1)], dim=1)
@@ -224,12 +224,13 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
         # print(torch.exp(policy_torch.logtemp))
         avgm = torch.mean(policy_torch.membership(obs), dim=0)
         # print('avg membership', avgm)
-        print('avg membership', avgm[avgm > torch.max(avgm) / 100])
+        print('avg membership', torch.sort(avgm[avgm > torch.max(avgm) / 100], descending=True)[0].detach().numpy())
+        print('avg membership of first ten clusters', torch.sum(torch.sort(avgm, descending=True)[0][:10]).detach().numpy())
 
 
 if __name__ == '__main__':
     # learn(envid='MountainCarContinuous-v0')
-    learn(envid='BipedalWalker-v2', max_ts=3e6, seed=0, norma='None', log_name='test_bip')
+    learn(envid='BipedalWalker-v2', max_ts=3e6, seed=0, norma='None', log_name='sig_bip')
     # learn(envid='RoboschoolInvertedDoublePendulum-v1', max_ts=1e6, seed=0, norma='All', log_name='test_idp')
     # learn(envid='RoboschoolHalfCheetah-v1')
     # learn(envid='RoboschoolHopper-v1',  max_ts=3e6, seed=0, norma='None', log_name='test_hop')

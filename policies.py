@@ -52,8 +52,12 @@ class MetricPolicy(nn.Module):
         self.cweights_list = nn.ParameterList().append(nn.Parameter(torch.tensor([1.])))
         self.means_list = nn.ParameterList().append(nn.Parameter(torch.zeros(1, a_dim)))
         self.logsigs = nn.Parameter(torch.zeros(a_dim))
-        # self.logtemp = nn.Parameter(torch.tensor(0.))
+        # self.logtemp = torch.tensor(0.7936915159225464)
+        # self.mud = torch.tensor(1.1713083982467651)
         self.logtemp = torch.tensor(0.)
+        self.mud = torch.tensor(1.17)
+        # self.logtemp = nn.Parameter(torch.tensor(0.))
+        # self.mud = nn.Parameter(torch.tensor(1.))
         self.cweights = self.means = None
         self.update_clustering()
 
@@ -82,7 +86,9 @@ class MetricPolicy(nn.Module):
         dist = torch.sum((s[:, None, :] - self.centers[None, :, :]) ** 2, dim=-1)
         # w = (self.rootweights ** 2) * torch.exp(-torch.exp(self.logtemp) * dist) + 1e-6
         # w = (torch.abs(self.rootweights) + (self.rootweights == 0.).float() * self.rootweights) * torch.exp(-torch.exp(self.logtemp) * dist) + 1e-6
-        w = Grad1Abs.apply(self.cweights) * torch.exp(-torch.exp(self.logtemp) * dist)
+        # w = Grad1Abs.apply(self.cweights) * torch.exp(-torch.exp(self.logtemp) * dist)
+        # w = Grad1Abs.apply(self.cweights) * torch.exp(-torch.exp(self.logtemp) * dist)
+        w = Grad1Abs.apply(self.cweights) * torch.sigmoid(-torch.exp(self.logtemp) * (dist - self.mud))
         # w = torch.exp(-torch.exp(self.logtemp) * dist + self.rootweights)
         return w
 

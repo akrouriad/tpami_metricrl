@@ -127,16 +127,17 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
         logging_kl = torch.mean(torch.distributions.kl_divergence(new_pol_dist, old_pol_dist))
         iter += 1
         print("iter {}: rewards {} entropy {} vf_loss {} kl {}".format(iter, avg_rwd, logging_ent, logging_verr, logging_kl))
+        print("logtemp {} mud {}".format(policy_torch.logtemp, policy_torch.mud))
         # print(policy_torch.rootweights)
         # print(torch.exp(policy_torch.logtemp))
         avgm = torch.mean(policy_torch.membership(obs), dim=0)
         # print('avg membership', avgm)
-        print('avg membership', avgm[avgm > torch.max(avgm) / 100])
+        print('avg membership', torch.sort(avgm[avgm > torch.max(avgm) / 100], descending=True)[0].detach().numpy())
 
 
 if __name__ == '__main__':
     # learn(envid='MountainCarContinuous-v0')
-    learn(envid='BipedalWalker-v2', max_ts=3e6, seed=0, norma='None', log_name='test_bip')
+    learn(envid='BipedalWalker-v2', max_ts=3e6, seed=0, norma='None', log_name='sig_bip')
     # learn(envid='RoboschoolInvertedDoublePendulum-v1', max_ts=1e6, seed=0, norma='All', log_name='test_idp')
     # learn(envid='RoboschoolHalfCheetah-v1')
     # learn(envid='RoboschoolHopper-v1',  max_ts=3e6, seed=0, norma='None', log_name='test_hop')
