@@ -44,10 +44,11 @@ class Grad1Abs(torch.autograd.Function):
 
 
 class MetricPolicy(nn.Module):
-    def __init__(self, a_dim):
+    def __init__(self, a_dim, hard_clustering=False):
         super().__init__()
         self.a_dim = a_dim
         self.centers = None
+        self.hard_clustering = hard_clustering
         # self.rootweights_list = nn.ParameterList().append(nn.Parameter(torch.tensor([0.])))
         self.cweights_list = nn.ParameterList().append(nn.Parameter(torch.tensor([1.])))
         self.means_list = nn.ParameterList().append(nn.Parameter(torch.zeros(1, a_dim)))
@@ -55,7 +56,7 @@ class MetricPolicy(nn.Module):
         # self.logtemp = torch.tensor(0.7936915159225464)
         # self.mud = torch.tensor(1.1713083982467651)
         self.logtemp = torch.tensor(0.)
-        self.mud = torch.tensor(1.17)
+        # self.mud = torch.tensor(1.17)
         # self.logtemp = nn.Parameter(torch.tensor(0.))
         # self.mud = nn.Parameter(torch.tensor(1.))
         self.cweights = self.means = None
@@ -86,10 +87,13 @@ class MetricPolicy(nn.Module):
         dist = torch.sum((s[:, None, :] - self.centers[None, :, :]) ** 2, dim=-1)
         # w = (self.rootweights ** 2) * torch.exp(-torch.exp(self.logtemp) * dist) + 1e-6
         # w = (torch.abs(self.rootweights) + (self.rootweights == 0.).float() * self.rootweights) * torch.exp(-torch.exp(self.logtemp) * dist) + 1e-6
-        # w = Grad1Abs.apply(self.cweights) * torch.exp(-torch.exp(self.logtemp) * dist)
-        # w = Grad1Abs.apply(self.cweights) * torch.exp(-torch.exp(self.logtemp) * dist)
-        w = Grad1Abs.apply(self.cweights) * torch.sigmoid(-torch.exp(self.logtemp) * (dist - self.mud))
+        w = Grad1Abs.apply(self.cweights) * torch.exp(-torch.exp(self.logtemp) * dist)
+        # w = Grad1Abs.apply(self.cweights) * torch.sigmoid(-torch.exp(self.logtemp) * (dist - self.mud))
         # w = torch.exp(-torch.exp(self.logtemp) * dist + self.rootweights)
+        if self.hard_clustering:
+            max_values = w.argmax(dim=1, keepdim=True)
+            w = torch.zeros(w.size()).scatter_(dim=1, index=max_values, value=1.)
+
         return w
 
     def distribution(self, s):
