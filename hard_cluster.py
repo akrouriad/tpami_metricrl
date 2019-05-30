@@ -64,9 +64,8 @@ class HardClusterMembership(Function):
                     delta = v2 / x[c] - weights[c]
                     eps_max = np.minimum(eps_max, delta.item())
 
-            eps_min = 0 if np.isinf(eps_min) else eps_min
-            eps_max = 0 if np.isinf(eps_max) else eps_max
-
+            # eps_min = 1 if np.isinf(eps_min) else eps_min
+            # eps_max = 1 if np.isinf(eps_max) else eps_max
 
             eps_min_list.append(eps_min)
             eps_max_list.append(eps_max)
@@ -81,7 +80,7 @@ class HardClusterMembership(Function):
             new_weights_minus = weights.clone()
             new_weights_minus[c] -= eps_min
 
-            # print('step for cluster c:', eps_max, eps_min)
+            print('step for cluster c:', eps_max, eps_min)
 
             grad[:, c, :] = (HardClusterMembership.eval_clusters(inputs, new_weights_plus) -
                              HardClusterMembership.eval_clusters(inputs, new_weights_minus)) / (eps_max + eps_min)
@@ -98,7 +97,7 @@ class HardClusterMembership(Function):
 
 
 if __name__ == '__main__':
-    n_steps = 100
+    n_steps = 1000
     n_cluster = 3
     n_points = 10
 
@@ -122,9 +121,11 @@ if __name__ == '__main__':
         print('loss:', loss.item())
         print('grad', w.grad.detach().numpy())
 
+        print ('-----------------------------------------------------------------------------------------------------')
+
 
         with torch.no_grad():
-            w += 0.1 * w.grad
+            w += 0.01 * w.grad
             w.grad.zero_()
 
         input()
