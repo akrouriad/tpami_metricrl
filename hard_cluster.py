@@ -46,6 +46,7 @@ class HardClusterMembership(Function):
         n_clusters = inputs.shape[1]
 
         grad = torch.zeros([n_points, n_clusters, n_clusters])
+        min_increase = 1e-6
 
         eps_min_list = list()
         eps_max_list = list()
@@ -64,8 +65,8 @@ class HardClusterMembership(Function):
                     delta = v2 / x[c] - weights[c]
                     eps_max = np.minimum(eps_max, delta.item())
 
-            # eps_min = 1 if np.isinf(eps_min) else eps_min
-            # eps_max = 1 if np.isinf(eps_max) else eps_max
+            eps_min = 0 if np.isinf(eps_min) else eps_min + min_increase
+            eps_max = 0 if np.isinf(eps_max) else eps_max + min_increase
 
             eps_min_list.append(eps_min)
             eps_max_list.append(eps_max)
@@ -80,18 +81,26 @@ class HardClusterMembership(Function):
             new_weights_minus = weights.clone()
             new_weights_minus[c] -= eps_min
 
-            print('step for cluster c:', eps_max, eps_min)
+            # print('step for cluster c:', eps_max, eps_min)
 
             grad[:, c, :] = (HardClusterMembership.eval_clusters(inputs, new_weights_plus) -
                              HardClusterMembership.eval_clusters(inputs, new_weights_minus)) / (eps_max + eps_min)
+            # print('cluster ', c)
+            # print(grad[:, c, :])
 
         weights_grad = torch.zeros([n_points, n_clusters])
 
         for i, g_output_x in enumerate(grad_output):
+            # print('sample #', i)
+            # print('cluster grad:')
             # print(grad[i])
+            # print('output grad:')
             # print(g_output_x)
 
-            weights_grad[i] = grad[i].t().mv(g_output_x)
+            weights_grad[i] = grad[i].mv(g_output_x)
+
+        # print('weights grad:')
+        # print(weights_grad)
 
         return None, weights_grad
 
@@ -99,7 +108,7 @@ class HardClusterMembership(Function):
 if __name__ == '__main__':
     n_steps = 1000
     n_cluster = 3
-    n_points = 10
+    n_points = 4
 
     w = torch.rand(n_cluster, dtype=torch.float, requires_grad=True)
 
@@ -109,8 +118,8 @@ if __name__ == '__main__':
     x = torch.rand(n_points, n_cluster, dtype=torch.float)
 
     for t in range(n_steps):
-        clusters = phi(x, w**2)
-        loss = torch.norm(clusters.mv(cost_w))
+        clusters = phi(x, torch.exp(w))
+        loss = torch.mean(clusters.mv(cost_w))
         loss.backward()
 
         print('w', w.detach().numpy())
@@ -121,11 +130,10 @@ if __name__ == '__main__':
         print('loss:', loss.item())
         print('grad', w.grad.detach().numpy())
 
-        print ('-----------------------------------------------------------------------------------------------------')
-
+        print('-----------------------------------------------------------------------------------------------------')
 
         with torch.no_grad():
-            w += 0.01 * w.grad
+            w += 0.1 * w.grad
             w.grad.zero_()
 
         input()
