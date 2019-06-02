@@ -110,18 +110,20 @@ if __name__ == '__main__':
     n_cluster = 3
     n_points = 4
 
+    torch.manual_seed(0)
     w = torch.rand(n_cluster, dtype=torch.float, requires_grad=True)
-
     cost_w = torch.Tensor([0.8, 0.15, 0.05])
 
     phi = HardClusterMembership.apply
     x = torch.rand(n_points, n_cluster, dtype=torch.float)
+    w_optim = torch.optim.Adam([w], lr=1e-1)
 
     for t in range(n_steps):
+        w_optim.zero_grad()
         clusters = phi(x, torch.exp(w))
-        loss = torch.mean(clusters.mv(cost_w))
+        loss = -torch.norm(clusters.mv(cost_w))
         loss.backward()
-
+        w_optim.step()
         print('w', w.detach().numpy())
         print('input:')
         print(x.detach().numpy())
@@ -132,8 +134,8 @@ if __name__ == '__main__':
 
         print('-----------------------------------------------------------------------------------------------------')
 
-        with torch.no_grad():
-            w += 0.1 * w.grad
-            w.grad.zero_()
+        # with torch.no_grad():
+        #     w += 0.1 * w.grad
+        #     w.grad.zero_()
 
-        input()
+        # input()

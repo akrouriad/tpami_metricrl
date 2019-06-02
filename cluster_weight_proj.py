@@ -46,3 +46,22 @@ def ls_cweight_mean_proj(w, means, wq, old_means, old_prec, epsilon, cmeans, lst
         eta = lb
     return eta
 
+
+def ls_hardcweight_mean_proj(hardning_fc, c, exp_dist, cq, old_means, old_prec, epsilon, cmeans, lstimes=10):
+    means = hardning_fc(exp_dist, c).mm(cmeans)
+    mw = mean_diff(means, old_means, old_prec)
+    eta = torch.tensor(1.)
+    if mw > epsilon + 1e-6:
+        lb = 0.
+        ub = 1.
+        for keta in range(lstimes):
+            deta = (lb + ub) / 2
+            ceta = (1 - deta) * cq + deta * c
+            means = hardning_fc(exp_dist, ceta).mm(cmeans)
+            if mean_diff(means, old_means, old_prec) > epsilon + 1e-6:
+                ub = deta
+            else:
+                lb = deta
+        eta = lb
+    return eta
+

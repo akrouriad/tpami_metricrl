@@ -44,11 +44,12 @@ class Grad1Abs(torch.autograd.Function):
 
 
 class MetricPolicy(nn.Module):
-    def __init__(self, a_dim, hard_clustering=False):
+    def __init__(self, a_dim, hard_clustering=False, hardning_fnc=None):
         super().__init__()
         self.a_dim = a_dim
         self.centers = None
         self.hard_clustering = hard_clustering
+        self.hardning_fnc = hardning_fnc
         # self.rootweights_list = nn.ParameterList().append(nn.Parameter(torch.tensor([0.])))
         self.cweights_list = nn.ParameterList().append(nn.Parameter(torch.tensor([1.])))
         self.means_list = nn.ParameterList().append(nn.Parameter(torch.zeros(1, a_dim)))
@@ -79,22 +80,34 @@ class MetricPolicy(nn.Module):
         return self.distribution(s).log_prob(a)[:, None]
 
     def membership(self, s):
-        w = self.unormalized_membership(s)
-        return w / torch.sum(w, dim=-1, keepdim=True)
+        if self.hard_clustering:
+            if self.hardning_fnc is None:
+                w = self.unormalized_membership(s)
+                return self.harden(w)
+            else:
+                return self.hardning_fnc(self.exp_dist(s), self.get_cweights())
+        else:
+            w = self.unormalized_membership(s)
+            return w / torch.sum(w, dim=-1, keepdim=True)
 
-    def unormalized_membership(self, s):
+    def exp_dist(self, s):
         # compute distances to cluster
         dist = torch.sum((s[:, None, :] - self.centers[None, :, :]) ** 2, dim=-1)
         # w = (self.rootweights ** 2) * torch.exp(-torch.exp(self.logtemp) * dist) + 1e-6
         # w = (torch.abs(self.rootweights) + (self.rootweights == 0.).float() * self.rootweights) * torch.exp(-torch.exp(self.logtemp) * dist) + 1e-6
-        w = Grad1Abs.apply(self.cweights) * torch.exp(-torch.exp(self.logtemp) * dist)
+        return torch.exp(-torch.exp(self.logtemp) * dist)
         # w = Grad1Abs.apply(self.cweights) * torch.sigmoid(-torch.exp(self.logtemp) * (dist - self.mud))
         # w = torch.exp(-torch.exp(self.logtemp) * dist + self.rootweights)
-        if self.hard_clustering:
-            max_values = w.argmax(dim=1, keepdim=True)
-            w = torch.zeros(w.size()).scatter_(dim=1, index=max_values, value=1.)
 
-        return w
+    def get_cweights(self):
+        return Grad1Abs.apply(self.cweights)
+
+    def unormalized_membership(self, s):
+        return self.get_cweights() * self.exp_dist(s)
+
+    def harden(self, w):
+        max_values = w.argmax(dim=1, keepdim=True)
+        return torch.zeros(w.size()).scatter_(dim=1, index=max_values, value=1.)
 
     def distribution(self, s):
         means = self.get_weighted_means(s)
