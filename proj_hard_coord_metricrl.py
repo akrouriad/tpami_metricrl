@@ -21,6 +21,7 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
     env.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
+    torch.set_num_threads(1)
 
     h_layer_width = 64
     h_layer_length = 2
@@ -52,7 +53,7 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
     policy_torch = MetricPolicy(a_dim, hard_clustering=True)
     policy = lambda obs: torch.squeeze(policy_torch(torch.tensor(obs, dtype=torch.float)), dim=0).detach().numpy()
     p_optim = torch.optim.Adam([par for par in policy_torch.means_list.parameters()] + [policy_torch.logsigs], lr=lr_p)
-    e_profile = TwoPhaseEntropProfile(policy_torch, max_kl)
+    e_profile = TwoPhaseEntropProfile(policy_torch, max_kl, e_thresh=policy_torch.entropy() / 2)
 
     discount = .99
     lam = .95
@@ -141,7 +142,7 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
                     cweights = policy_torch.get_cweights()
                     softw = policy_torch.unormalized_membership(obs[batch_idx])
                     w = policy_torch.harden(softw)
-                    init_cweight = cweights[k]
+                    init_cweight = cweights[k].clone()
                     prob_ratio = torch.exp(policy_torch.log_prob(obs[batch_idx], act[batch_idx]) - old_log_p[batch_idx])
                     init_loss = torch.mean(prob_ratio * adv[batch_idx])
 

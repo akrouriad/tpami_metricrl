@@ -9,6 +9,8 @@ from rl_shared import MLP, RunningMeanStdFilter, ValueFunction, ValueFunctionLis
 import rl_shared as rl
 from policies import MetricPolicy
 import gaussian_proj as proj
+from hard_cluster import HardClusterMembership
+
 
 def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, aggreg_type='Min', min_sample_per_iter=3000):
     print('Metric RL')
@@ -17,6 +19,7 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
     env.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
+    torch.set_num_threads(1)
 
     h_layer_width = 64
     h_layer_length = 2
@@ -42,6 +45,7 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
     value_from_list = ValueFunctionList(value_fct)
 
     policy_torch = MetricPolicy(a_dim)
+    # policy_torch = MetricPolicy(a_dim, hard_clustering=True, hardning_fnc=HardClusterMembership.apply)
     policy = lambda obs: torch.squeeze(policy_torch(torch.tensor(obs, dtype=torch.float)), dim=0).detach().numpy()
     p_optim = torch.optim.Adam(policy_torch.parameters(), lr=lr_p)
 
@@ -127,7 +131,7 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
         logging_kl = torch.mean(torch.distributions.kl_divergence(new_pol_dist, old_pol_dist))
         iter += 1
         print("iter {}: rewards {} entropy {} vf_loss {} kl {}".format(iter, avg_rwd, logging_ent, logging_verr, logging_kl))
-        print("logtemp {} mud {}".format(policy_torch.logtemp, policy_torch.mud))
+        # print("logtemp {} mud {}".format(policy_torch.logtemp, policy_torch.mud))
         # print(policy_torch.rootweights)
         # print(torch.exp(policy_torch.logtemp))
         avgm = torch.mean(policy_torch.membership(obs), dim=0)

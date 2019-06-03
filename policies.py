@@ -53,6 +53,7 @@ class MetricPolicy(nn.Module):
         # self.rootweights_list = nn.ParameterList().append(nn.Parameter(torch.tensor([0.])))
         self.cweights_list = nn.ParameterList().append(nn.Parameter(torch.tensor([1.])))
         self.means_list = nn.ParameterList().append(nn.Parameter(torch.zeros(1, a_dim)))
+        self.active_cluster_list = [0]
         self.logsigs = nn.Parameter(torch.zeros(a_dim))
         # self.logtemp = torch.tensor(0.7936915159225464)
         # self.mud = torch.tensor(1.1713083982467651)
@@ -65,8 +66,10 @@ class MetricPolicy(nn.Module):
 
     def update_clustering(self):
         # to speed up computation
-        self.cweights = torch.cat([*self.cweights_list.parameters()])
-        self.means = torch.cat([*self.means_list.parameters()])
+        # self.cweights = torch.cat([*self.cweights_list.parameters()])
+        # self.means = torch.cat([*self.means_list.parameters()])
+        self.cweights = torch.cat([self.cweights_list[k] for k in self.active_cluster_list])
+        self.means = torch.cat([self.means_list[k] for k in self.active_cluster_list])
 
     def forward(self, s):
         with torch.no_grad():
@@ -101,6 +104,8 @@ class MetricPolicy(nn.Module):
 
     def get_cweights(self):
         return Grad1Abs.apply(self.cweights)
+        # return torch.exp(self.cweights)
+        # return torch.abs(self.cweights)
 
     def unormalized_membership(self, s):
         return self.get_cweights() * self.exp_dist(s)
@@ -128,9 +133,30 @@ class MetricPolicy(nn.Module):
         return self.a_dim / 2 * np.log(2 * np.pi * np.e) + torch.sum(self.logsigs).detach().numpy()
 
     def add_cluster(self, s, a):
+        self.active_cluster_list.append(len(self.cweights_list))
         self.centers = torch.cat([self.centers, s])
         self.means_list.append(nn.Parameter(a))
+        # self.cweights_list.append(nn.Parameter(torch.tensor([1e-16])))
         self.cweights_list.append(nn.Parameter(torch.tensor([0.])))
-        # self.rootweights_list.append(nn.Parameter(torch.tensor([-100.])))
-        # self.rootweights_list.append(nn.Parameter(torch.tensor([-2.])))
+        # self.cweights_list.append(nn.Parameter(torch.tensor([-5.])))
+        self.update_clustering()
+
+    def delete_clusters(self, cluster_idx):
+        if cluster_idx:
+            self.active_cluster_list = [self.active_cluster_list[k] for k in range(len(self.active_cluster_list)) if k not in cluster_idx]
+            self.centers = torch.cat([self.centers[[k]] for k in range(self.centers.size()[0]) if k not in cluster_idx])
+            self.update_clustering()
+
+    def zero_cweight_param(self, idx):
+        self.cweights_list[self.active_cluster_list[idx]].data = torch.tensor([0.])
+        self.update_clustering()
+
+    def set_cweights_param(self, vals):
+        for k, val in enumerate(vals):
+            self.cweights_list[self.active_cluster_list[k]].data = val.unsqueeze(0)
+        self.update_clustering()
+
+    def set_cmeans_param(self, cmeans):
+        for k, cm in enumerate(cmeans):
+            self.means_list[self.active_cluster_list[k]].data = cm.unsqueeze(0)
         self.update_clustering()
