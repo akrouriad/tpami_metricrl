@@ -52,7 +52,7 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
     iter = 0
     if log_name is not None:
         logger = rllog.PolicyIterationLogger(log_name)
-        policy_saver = rllog.FixedIterSaver(policy_torch, log_name, verbose=True)
+        policy_saver = rllog.FixedIterSaver(policy_torch, log_name, verbose=False)
     while True:
         p_paths = dat.rollouts(env, policy, min_sample_per_iter, render=False)
         iter_ts = len(p_paths['rwd'])

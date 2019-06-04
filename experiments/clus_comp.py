@@ -1,4 +1,4 @@
-test = True
+test = False
 local = True
 # dir_out = '/home/ra61casa/cluscomp/'
 dir_out = './cluscomp/'
@@ -6,7 +6,8 @@ dir_out = './cluscomp/'
 base = '_cc'
 # envs = ['BipedalWalker-v2', 'RoboschoolHopper-v1', 'RoboschoolInvertedDoublePendulum-v1', 'RoboschoolWalker2d-v1', 'RoboschoolHalfCheetah-v1', 'RoboschoolAnt-v1', 'MountainCarContinuous-v0']
 # envs = ['RoboschoolHopper-v1', 'RoboschoolWalker2d-v1', 'RoboschoolHalfCheetah-v1', 'RoboschoolAnt-v1']
-envs = ['RoboschoolHopper-v1', 'RoboschoolWalker2d-v1', 'BipedalWalker-v2']
+# envs = ['RoboschoolHopper-v1', 'RoboschoolWalker2d-v1', 'BipedalWalker-v2']
+envs = ['BipedalWalker-v2']
 nb_runs = 5
 all_par = []
 max_tss = [3e6]
@@ -33,7 +34,7 @@ for max_ts in max_tss:
 # Creating launch scripts
 slurms = []
 nb_proc_per_act = 1
-nb_act = 16
+nb_act = 6
 nb_proc = nb_act * nb_proc_per_act
 for k, i in enumerate(range(0, len(all_par), nb_act)):
     # create python script

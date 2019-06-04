@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 import gym
-# import roboschool
+import roboschool
 import data_handling as dat
 import rllog
 from rl_shared import MLP, RunningMeanStdFilter, ValueFunction, ValueFunctionList
@@ -77,6 +77,8 @@ def learn(envid, nb_max_clusters, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', 
     iter = 0
     if log_name is not None:
         logger = rllog.PolicyIterationLogger(log_name)
+        policy_saver = rllog.FixedIterSaver(policy_torch, log_name, verbose=False)
+
     while True:
         iter_start = time.time()
         p_paths = dat.rollouts(env, policy, min_sample_per_iter, render=False)
@@ -250,13 +252,11 @@ def learn(envid, nb_max_clusters, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', 
         print('avg membership of first ten clusters', torch.sum(torch.sort(avgm, descending=True)[0][:10]).detach().numpy())
         print('cweights', policy_torch.cweights)
         # print('iter time', time.time() - iter_start)
+        if log_name is not None:
+            policy_saver.next_iter()
 
 if __name__ == '__main__':
-    # learn(envid='MountainCarContinuous-v0')
-    learn(envid='BipedalWalker-v2', max_ts=3e6, seed=0, norma='None', log_name='exp_bip')
-    # learn(envid='RoboschoolInvertedDoublePendulum-v1', max_ts=1e6, seed=0, norma='All', log_name='test_idp')
-    # learn(envid='RoboschoolHalfCheetah-v1')
-    # learn(envid='RoboschoolHopper-v1',  max_ts=3e6, seed=0, norma='None', log_name='test_hop')
-    # learn(envid='RoboschoolHumanoid-v1',  nb_vfunc=2, max_ts=1e7, seed=0, norma='None', log_name='test_hum', aggreg_type='Max')
-    # learn(envid='RoboschoolAnt-v1', seed=0, norma='None')
+    # learn(envid='BipedalWalker-v2', nb_max_clusters=10, max_ts=3e6, seed=0, norma='None', log_name='exp_bip')
+    learn(envid='RoboschoolHopper-v1', nb_max_clusters=10, max_ts=3e6, seed=0, norma='None', log_name='exp_bip')
+    # learn(envid='RoboschoolWalker2d-v1', nb_max_clusters=10, max_ts=3e6, seed=0, norma='None', log_name='exp_bip')
 
