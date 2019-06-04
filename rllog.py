@@ -3,19 +3,20 @@ import numpy as np
 
 
 class FixedIterSaver:
-    def __init__(self, network, file_base_name, verbose=True, iter_to_save=[]):
+    def __init__(self, network, file_base_name, extension='.pth',  verbose=True, iter_to_save=[]):
         self.network = network
         self.file_base_name = file_base_name
+        self.extension = extension
         self.verbose = verbose
         self.nb_iter = 0
         self.iter_to_save = np.asarray(iter_to_save)
 
     def next_iter(self):
         self.nb_iter += 1
-        if np.any((self.iter_to_save - self.nb_iter) == 0):
+        if len(self.iter_to_save) == 0 or np.any((self.iter_to_save - self.nb_iter) == 0):
             if self.verbose:
                 print('--> saving iteration {}'.format(self.nb_iter))
-            torch.save(self.network.state_dict(), self.file_base_name)
+            torch.save(self.network.state_dict(), self.file_base_name + '-' + str(self.nb_iter) + self.extension)
 
 
 class PolicyIterationLogger:

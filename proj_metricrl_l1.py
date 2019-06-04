@@ -47,7 +47,7 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
     nb_epochs_params = 20
     max_kl = .015
     kl_cluster = max_kl / 2.
-    lambda_reg = 0.1
+    lambda_reg = 0.01
 
     s_dim = env.observation_space.shape[0]
     a_dim = env.action_space.shape[0]
@@ -159,7 +159,7 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
                 eta = cweight_mean_proj(w, means, wq[batch_idx], old_means[batch_idx], old_cov_d['prec'], kl_cluster)
                 policy_torch.cweights = eta * policy_torch.cweights + (1 - eta) * old_cweights
                 prob_ratio = torch.exp(policy_torch.log_prob(obs[batch_idx], act[batch_idx]) - old_log_p[batch_idx])
-                l1_reg = l1_weights_regularization(policy_torch.cweights)
+                l1_reg = l1_weights_regularization(policy_torch.get_cweights())
                 loss = -torch.mean(prob_ratio * adv[batch_idx]) + lambda_reg * l1_reg
                 loss.backward()
                 cw_optim.step()
@@ -198,8 +198,7 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
                     proj_d = proj.lin_gauss_kl_proj(means, chol, intermediate_means[batch_idx], old_means[batch_idx], old_cov_d['cov'], old_cov_d['prec'], old_cov_d['logdetcov'], max_kl, e_lb)
                     proj_distrib = torch.distributions.MultivariateNormal(proj_d['means'], scale_tril=proj_d['chol'])
                     prob_ratio = torch.exp(proj_distrib.log_prob(act[batch_idx])[:, None] - old_log_p[batch_idx])
-                    l1_reg = l1_weights_regularization(policy_torch.cweights)
-                    loss = -torch.mean(prob_ratio * adv[batch_idx]) + lambda_reg*l1_reg
+                    loss = -torch.mean(prob_ratio * adv[batch_idx])
                     loss.backward()
                     p_optim.step()
                     policy_torch.update_clustering()
