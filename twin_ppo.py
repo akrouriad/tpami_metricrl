@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 import torch.nn.functional as F
-import roboschool
+#import roboschool
 import gym
 import data_handling as dat
 import rllog
@@ -52,6 +52,7 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
     iter = 0
     if log_name is not None:
         logger = rllog.PolicyIterationLogger(log_name)
+        policy_saver = rllog.FixedIterSaver(policy_torch, log_name, verbose=True)
     while True:
         p_paths = dat.rollouts(env, policy, min_sample_per_iter, render=False)
         iter_ts = len(p_paths['rwd'])
@@ -139,12 +140,15 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
         iter += 1
         print("iter {}: rewards {} entropy {} vf_loss {} kl {} lr {} sel_ep {}".format(iter, avg_rwd, logging_ent, logging_verr, logging_kl, lr, selected_pol_idx))
 
+        if log_name is not None:
+            policy_saver.next_iter()
+
 
 if __name__ == '__main__':
     # learn(envid='MountainCarContinuous-v0')
-    # learn(envid='BipedalWalker-v2', max_ts=3e6, seed=0, norma='None', log_name='test_bip')
+    learn(envid='BipedalWalker-v2', max_ts=3e6, seed=0, norma='None', log_name='test_bip')
     # learn(envid='RoboschoolInvertedDoublePendulum-v1', max_ts=1e6, seed=0, norma='All', log_name='test_idp')
     # learn(envid='RoboschoolHalfCheetah-v1')
     # learn(envid='RoboschoolHopper-v1',  max_ts=3e6, seed=0, norma='None', log_name='test_hop')
-    learn(envid='RoboschoolHumanoid-v1',  nb_vfunc=2, max_ts=1e7, seed=0, norma='None', log_name='test_hum', aggreg_type='Max')
+    #learn(envid='RoboschoolHumanoid-v1',  nb_vfunc=2, max_ts=1e7, seed=0, norma='None', log_name='test_hum', aggreg_type='Max')
     # learn(envid='RoboschoolAnt-v1', seed=0, norma='None')
