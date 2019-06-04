@@ -12,6 +12,7 @@ import gaussian_proj as proj
 from cluster_weight_proj import cweight_mean_proj, ls_cweight_mean_proj
 import time
 
+
 class TwoPhaseEntropProfile:
     def __init__(self, policy, e_reduc, e_thresh):
         self.init_entropy = policy.entropy()
@@ -26,8 +27,7 @@ class TwoPhaseEntropProfile:
             return self._policy.entropy() - self._e_reduc
 
 
-
-def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, aggreg_type='Min', min_sample_per_iter=3000):
+def learn(envid, nb_max_clusters, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, aggreg_type='Min', min_sample_per_iter=3000):
     print('Metric RL')
     print('Params: nb_vfunc {} norma {} aggreg_type {} max_ts {} seed {} log_name {}'.format(nb_vfunc, norma, aggreg_type, max_ts, seed, log_name))
     env = gym.make(envid)
@@ -48,7 +48,6 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
     max_kl_cw = max_kl / 2.
     max_kl_cdel = 2 * max_kl / 3.
     e_reduc = .015
-    nb_max_clusters = 10
 
     s_dim = env.observation_space.shape[0]
     a_dim = env.action_space.shape[0]
