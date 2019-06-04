@@ -1,12 +1,12 @@
-import sys
-import tensorflow as tf
+import torch
 import numpy as np
 
 
 class FixedIterSaver:
-    def __init__(self, session, file_base_name, verbose=True, max_to_keep=1, iter_to_save=[]):
-        self.sess, self.file_base_name, self.verbose = session, file_base_name, verbose
-        self.saver = tf.train.Saver(var_list=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES), max_to_keep=max_to_keep)
+    def __init__(self, network, file_base_name, verbose=True, iter_to_save=[]):
+        self.network = network
+        self.file_base_name = file_base_name
+        self.verbose = verbose
         self.nb_iter = 0
         self.iter_to_save = np.asarray(iter_to_save)
 
@@ -15,7 +15,7 @@ class FixedIterSaver:
         if np.any((self.iter_to_save - self.nb_iter) == 0):
             if self.verbose:
                 print('--> saving iteration {}'.format(self.nb_iter))
-            self.saver.save(self.sess, self.file_base_name, global_step=self.nb_iter)
+            torch.save(self.network.state_dict(), self.file_base_name)
 
 
 class PolicyIterationLogger:
