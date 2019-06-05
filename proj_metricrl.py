@@ -255,8 +255,9 @@ def learn(envid, nb_max_clusters, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', 
         if log_name is not None:
             policy_saver.next_iter()
 
+
 if __name__ == '__main__':
-    # learn(envid='BipedalWalker-v2', nb_max_clusters=10, max_ts=3e6, seed=0, norma='None', log_name='exp_bip')
-    learn(envid='RoboschoolHopper-v1', nb_max_clusters=10, max_ts=3e6, seed=0, norma='None', log_name='exp_bip')
+    learn(envid='BipedalWalker-v2', nb_max_clusters=5, max_ts=3e6, seed=1, norma='None', log_name='clus5')
+    # learn(envid='RoboschoolHopper-v1', nb_max_clusters=10, max_ts=3e6, seed=0, norma='None', log_name='exp_bip')
     # learn(envid='RoboschoolWalker2d-v1', nb_max_clusters=10, max_ts=3e6, seed=0, norma='None', log_name='exp_bip')
 
