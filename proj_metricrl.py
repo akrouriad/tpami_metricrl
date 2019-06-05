@@ -19,12 +19,16 @@ class TwoPhaseEntropProfile:
         self._policy = policy
         self._e_reduc = e_reduc
         self._e_thresh = e_thresh
+        self._phase = 1
+        self._iter = 0
 
     def get_e_lb(self):
-        if self._policy.entropy() > self._e_thresh:
+        if self._phase == 1 and self._policy.entropy() > self._e_thresh:
             return -10000.
         else:
-            return self._policy.entropy() - self._e_reduc
+            self._phase = 2
+            self._iter += 1
+            return self._e_thresh - self._iter * self._e_reduc
 
 
 def learn(envid, nb_max_clusters, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, aggreg_type='Min', min_sample_per_iter=3000):
