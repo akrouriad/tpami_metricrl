@@ -1,8 +1,9 @@
 import torch
 import torch.nn.functional as F
 import numpy as np
+import pybullet_envs
+import pybullet
 import gym
-import roboschool
 import data_handling as dat
 import rllog
 from rl_shared import MLP, RunningMeanStdFilter, ValueFunction, ValueFunctionList
@@ -34,6 +35,10 @@ class TwoPhaseEntropProfile:
 def learn(envid, nb_max_clusters, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, aggreg_type='Min', min_sample_per_iter=3000):
     print('Metric RL')
     print('Params: nb_vfunc {} norma {} aggreg_type {} max_ts {} seed {} log_name {}'.format(nb_vfunc, norma, aggreg_type, max_ts, seed, log_name))
+
+    if '- ' + envid in pybullet_envs.getList():
+        import pybullet
+        pybullet.connect(pybullet.DIRECT)
     env = gym.make(envid)
     env.seed(seed)
     np.random.seed(seed)
@@ -262,6 +267,5 @@ def learn(envid, nb_max_clusters, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', 
 
 if __name__ == '__main__':
     learn(envid='BipedalWalker-v2', nb_max_clusters=5, max_ts=3e6, seed=1, norma='None', log_name='clus5')
-    # learn(envid='RoboschoolHopper-v1', nb_max_clusters=10, max_ts=3e6, seed=0, norma='None', log_name='exp_bip')
-    # learn(envid='RoboschoolWalker2d-v1', nb_max_clusters=10, max_ts=3e6, seed=0, norma='None', log_name='exp_bip')
+    #learn(envid='HopperBulletEnv-v0', nb_max_clusters=5, max_ts=3e6, seed=0, norma='None', log_name='exp_bip')
 

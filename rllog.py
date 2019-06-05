@@ -16,7 +16,7 @@ class FixedIterSaver:
         if len(self.iter_to_save) == 0 or np.any((self.iter_to_save - self.nb_iter) == 0):
             if self.verbose:
                 print('--> saving iteration {}'.format(self.nb_iter))
-            torch.save(self.network.state_dict(), self.file_base_name + '-' + str(self.nb_iter) + self.extension)
+            torch.save(self.network, self.file_base_name + '-' + str(self.nb_iter) + self.extension)
 
 
 class PolicyIterationLogger:

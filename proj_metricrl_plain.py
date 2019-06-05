@@ -1,8 +1,9 @@
 import torch
 import torch.nn.functional as F
 import numpy as np
+import pybullet_envs
+import pybullet
 import gym
-# import roboschool
 import data_handling as dat
 import rllog
 from rl_shared import MLP, RunningMeanStdFilter, ValueFunction, ValueFunctionList
@@ -29,6 +30,10 @@ class TwoPhaseEntropProfile:
 def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, aggreg_type='Min', min_sample_per_iter=3000):
     print('Metric RL')
     print('Params: nb_vfunc {} norma {} aggreg_type {} max_ts {} seed {} log_name {}'.format(nb_vfunc, norma, aggreg_type, max_ts, seed, log_name))
+
+    if '- ' + envid in pybullet_envs.getList():
+        import pybullet
+        pybullet.connect(pybullet.DIRECT)
     env = gym.make(envid)
     env.seed(seed)
     np.random.seed(seed)
@@ -229,8 +234,9 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
 
 
 if __name__ == '__main__':
+    learn(envid='HopperBulletEnv-v0', max_ts=3e6, seed=0, norma='None', log_name='exp_bip')
     # learn(envid='MountainCarContinuous-v0')
-    learn(envid='BipedalWalker-v2', max_ts=3e6, seed=0, norma='None', log_name='exp_bip')
+    #learn(envid='BipedalWalker-v2', max_ts=3e6, seed=0, norma='None', log_name='exp_bip')
     # learn(envid='RoboschoolInvertedDoublePendulum-v1', max_ts=1e6, seed=0, norma='All', log_name='test_idp')
     # learn(envid='RoboschoolHalfCheetah-v1')
     # learn(envid='RoboschoolHopper-v1',  max_ts=3e6, seed=0, norma='None', log_name='test_hop')
