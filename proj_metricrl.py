@@ -3,6 +3,7 @@ import torch.nn.functional as F
 import numpy as np
 import pybullet_envs
 import pybullet
+import roboschool
 import gym
 import data_handling as dat
 import rllog
@@ -49,6 +50,7 @@ def learn(envid, nb_max_clusters, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', 
     h_layer_length = 2
     lr_v = 3e-4
     lr_p = 1e-3
+    lr_cw = 1e-1
     nb_epochs_v = 10
     batch_size_pupdate = 64
     nb_epochs_clus = 20
@@ -75,7 +77,7 @@ def learn(envid, nb_max_clusters, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', 
 
     policy_torch = MetricPolicy(a_dim)
     policy = lambda obs: torch.squeeze(policy_torch(torch.tensor(obs, dtype=torch.float)), dim=0).detach().numpy()
-    cw_optim = torch.optim.Adam(policy_torch.cweights_list.parameters(), lr=lr_p)
+    cw_optim = torch.optim.Adam(policy_torch.cweights_list.parameters(), lr=lr_cw)
     p_optim = torch.optim.Adam([par for par in policy_torch.means_list.parameters()] + [policy_torch.logsigs], lr=lr_p)
     e_profile = TwoPhaseEntropProfile(policy_torch, e_reduc=e_reduc, e_thresh=policy_torch.entropy() / 2)
 
@@ -169,7 +171,7 @@ def learn(envid, nb_max_clusters, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', 
                 # batch_idx = range(rwd.size()[0])
                 cw_optim.zero_grad()
                 w = policy_torch.unormalized_membership(obs[batch_idx])
-                means = (w / torch.sum(w, dim=-1, keepdim=True)).mm(policy_torch.means)
+                means = policy_torch.get_weighted_means(obs[batch_idx])
                 # eta = ls_cweight_mean_proj(w, means, wq[batch_idx], old_means[batch_idx], old_cov_d['prec'], kl_cluster, cmeans=old_cmeans)
                 eta = cweight_mean_proj(w, means, wq[batch_idx], old_means[batch_idx], old_cov_d['prec'], max_kl_cw)
                 policy_torch.cweights = eta * policy_torch.cweights + (1 - eta) * old_cweights
@@ -186,7 +188,7 @@ def learn(envid, nb_max_clusters, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', 
         # eta = ls_cweight_mean_proj(w, means, wq, old_means, old_cov_d['prec'], kl_cluster, cmeans=old_cmeans)
         eta = cweight_mean_proj(w, means, wq, old_means, old_cov_d['prec'], max_kl_cw)
         weta = eta * w + (1. - eta) * wq
-        weta /= torch.sum(weta, dim=1, keepdim=True)
+        weta /= torch.sum(weta, dim=1, keepdim=True) + 1 #!
         final_kl = proj.mean_diff(weta.mm(policy_torch.means), old_means, old_cov_d['prec'])
         cweights = eta * torch.abs(policy_torch.cweights) + (1 - eta) * torch.abs(old_cweights)
         policy_torch.set_cweights_param(cweights)
@@ -266,6 +268,7 @@ def learn(envid, nb_max_clusters, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', 
 
 
 if __name__ == '__main__':
-    learn(envid='BipedalWalker-v2', nb_max_clusters=5, max_ts=3e6, seed=1, norma='None', log_name='clus5')
-    #learn(envid='HopperBulletEnv-v0', nb_max_clusters=5, max_ts=3e6, seed=0, norma='None', log_name='exp_bip')
+    # learn(envid='BipedalWalker-v2', nb_max_clusters=5, max_ts=3e6, seed=1, norma='None', log_name='clus5')
+    # learn(envid='HopperBulletEnv-v0', nb_max_clusters=5, max_ts=3e6, seed=0, norma='None', log_name='hoppbul')
+    learn(envid='RoboschoolHopper-v1', nb_max_clusters=10, max_ts=3e6, seed=0, norma='None', log_name='hopp5')
 

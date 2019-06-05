@@ -91,7 +91,7 @@ class MetricPolicy(nn.Module):
                 return self.hardning_fnc(self.exp_dist(s), self.get_cweights())
         else:
             w = self.unormalized_membership(s)
-            return w / torch.sum(w, dim=-1, keepdim=True)
+            return w / (torch.sum(w, dim=-1, keepdim=True) + 1) #!
 
     def exp_dist(self, s):
         # compute distances to cluster

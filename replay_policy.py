@@ -1,6 +1,7 @@
 import torch
 import torch.nn.functional as F
 import numpy as np
+import roboschool
 import pybullet_envs
 import pybullet
 import gym
@@ -45,5 +46,6 @@ def replay(envid, log_name, iteration, seed=0, min_sample_per_iter=3000):
 
 
 if __name__ == '__main__':
-    replay(envid='BipedalWalker-v2', log_name='clus5', iteration=194, seed=0)
+    # replay(envid='BipedalWalker-v2', log_name='clus5', iteration=194, seed=0)
     #replay(envid='HopperBulletEnv-v0', log_name='exp_bip', seed=0)
+    replay(envid='RoboschoolHopper-v1', seed=0, log_name='hopp5', iteration=85)
