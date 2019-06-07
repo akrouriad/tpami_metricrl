@@ -1,21 +1,14 @@
+import os
 import torch
-import torch.nn.functional as F
 import numpy as np
-import roboschool
 import pybullet_envs
-import pybullet
 import gym
 import data_handling as dat
-import rllog
-from rl_shared import MLP, RunningMeanStdFilter, ValueFunction, ValueFunctionList
-import rl_shared as rl
-from policies import MetricPolicy
-import gaussian_proj as proj
-from cluster_weight_proj import cweight_mean_proj, ls_cweight_mean_proj
-import time
 
 
-def replay(envid, log_name, iteration, seed=0, min_sample_per_iter=3000):
+
+
+def replay(envid, log_name, iteration, seed=0, n_epochs=100, min_sample_per_iter=3000):
     print('Metric RL Replay')
     print('envid:', envid)
     print('log file:', log_name)
@@ -33,19 +26,22 @@ def replay(envid, log_name, iteration, seed=0, min_sample_per_iter=3000):
     if '- ' + envid in pybullet_envs.getList():
         env.render(mode='human')
 
-    policy_torch = torch.load(log_name + '-' + str(iteration) + '.pth')
+    policy_path = os.path.join(log_name, 'network-' + str(iteration) + '.pth')
+    policy_torch = torch.load(policy_path)
 
     print('cluster centers:')
-    for cluster in  policy_torch.centers.detach().numpy():
+    for cluster in policy_torch.centers.detach().numpy():
         print(cluster[4:7:2]/np.pi*180.0, cluster[8:12:2]/np.pi*180.0)
 
     policy = lambda obs: torch.squeeze(policy_torch(torch.tensor(obs, dtype=torch.float)), dim=0).detach().numpy()
 
-    while True:
+    for it in range(n_epochs):
         dat.rollouts(env, policy, min_sample_per_iter, render=True)
 
 
 if __name__ == '__main__':
-    # replay(envid='BipedalWalker-v2', log_name='clus5', iteration=194, seed=0)
-    #replay(envid='HopperBulletEnv-v0', log_name='exp_bip', seed=0)
-    replay(envid='RoboschoolHopper-v1', seed=0, log_name='hopp5', iteration=85)
+    #replay(envid='BipedalWalker-v2', log_name='clus5', iteration=194, seed=0)
+    log_name = 'log/hopper_bul/projection_2019-06-07_11-48-27_20'
+    replay(envid='HopperBulletEnv-v0', log_name=log_name, iteration=279, seed=0)
+    #import roboschool
+    #replay(envid='RoboschoolHopper-v1', seed=0, log_name='hopp5', iteration=85)

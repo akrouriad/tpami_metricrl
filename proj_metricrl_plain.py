@@ -234,7 +234,8 @@ def learn(envid, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, ag
 
 
 if __name__ == '__main__':
-    learn(envid='HopperBulletEnv-v0', max_ts=3e6, seed=0, norma='None', log_name='exp_bip')
+    log_name = rllog.generate_log_folder('hopper_bul', 'projection', 'unbounded',  timestamp=True)
+    learn(envid='HopperBulletEnv-v0', max_ts=3e6, seed=0, norma='None', log_name=log_name)
     # learn(envid='MountainCarContinuous-v0')
     #learn(envid='BipedalWalker-v2', max_ts=3e6, seed=0, norma='None', log_name='exp_bip')
     # learn(envid='RoboschoolInvertedDoublePendulum-v1', max_ts=1e6, seed=0, norma='All', log_name='test_idp')

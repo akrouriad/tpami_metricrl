@@ -1,5 +1,7 @@
 import numpy as np
 import torch
+from time import sleep
+sleep(0.05)
 
 
 def next_batch_idx(batch_size, data_set_size):
@@ -14,6 +16,7 @@ def rollout(env, policy, render=False):
     done = False
     while not done:
         if render:
+            sleep(1/60)
             env.render()
         act = policy(obs)
         # print(act)
