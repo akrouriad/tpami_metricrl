@@ -8,7 +8,7 @@ import data_handling as dat
 
 
 
-def replay(envid, log_name, iteration, seed=0, n_epochs=100, min_sample_per_iter=3000):
+def replay(envid, log_name, iteration, seed=0, n_epochs=1, min_sample_per_iter=3000):
     print('Metric RL Replay')
     print('envid:', envid)
     print('log file:', log_name)
@@ -33,6 +33,11 @@ def replay(envid, log_name, iteration, seed=0, n_epochs=100, min_sample_per_iter
     for cluster in policy_torch.centers.detach().numpy():
         print(cluster[4:7:2]/np.pi*180.0, cluster[8:12:2]/np.pi*180.0)
 
+    print('clusters means:')
+
+    for active_cluster in policy_torch.active_cluster_list:
+        print(policy_torch.means_list[active_cluster].detach().numpy())
+
     policy = lambda obs: torch.squeeze(policy_torch(torch.tensor(obs, dtype=torch.float)), dim=0).detach().numpy()
 
     for it in range(n_epochs):
@@ -41,7 +46,8 @@ def replay(envid, log_name, iteration, seed=0, n_epochs=100, min_sample_per_iter
 
 if __name__ == '__main__':
     #replay(envid='BipedalWalker-v2', log_name='clus5', iteration=194, seed=0)
-    log_name = 'log/hopper_bul/projection_2019-06-07_11-48-27_20'
-    replay(envid='HopperBulletEnv-v0', log_name=log_name, iteration=279, seed=0)
+    log_name = 'log/hopper_bul/projection_2019-06-07_15-37-01_5'
+    print('replaying cluster:', log_name)
+    replay(envid='HopperBulletEnv-v0', log_name=log_name, iteration=910, seed=0)
     #import roboschool
     #replay(envid='RoboschoolHopper-v1', seed=0, log_name='hopp5', iteration=85)

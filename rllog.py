@@ -22,6 +22,7 @@ def generate_log_folder(name, algorithm_name='', postfix='', timestamp=False, ba
 
     return folder_name
 
+
 class FixedIterSaver:
     def __init__(self, network, directory, verbose=True, iter_to_save=[]):
         self.network = network

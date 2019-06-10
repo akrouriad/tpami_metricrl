@@ -58,7 +58,7 @@ def learn(envid, nb_max_clusters, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', 
     max_kl = .015
     max_kl_cw = max_kl / 2.
     max_kl_cdel = 2 * max_kl / 3.
-    e_reduc = .015/2
+    e_reduc = .015/4
 
     s_dim = env.observation_space.shape[0]
     a_dim = env.action_space.shape[0]
@@ -268,7 +268,7 @@ def learn(envid, nb_max_clusters, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', 
 
 
 if __name__ == '__main__':
-    nb_max_cluster = 20
+    nb_max_cluster = 5
     log_name = rllog.generate_log_folder('hopper_bul', 'projection', str(nb_max_cluster), True)
     learn(envid='HopperBulletEnv-v0', nb_max_clusters=nb_max_cluster, max_ts=3e6, seed=0, norma='None', log_name=log_name)
 
