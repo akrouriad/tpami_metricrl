@@ -2,6 +2,7 @@ import os
 import pathlib
 import datetime
 import torch
+import pickle
 import numpy as np
 
 
@@ -24,6 +25,12 @@ def generate_log_folder(name, algorithm_name='', postfix='', timestamp=False, ba
     pathlib.Path(network_folder_name).mkdir(parents=True)
 
     return folder_name
+
+
+def save_parameters(log_name, **kwargs):
+    file_name = os.path.join(log_name, 'parameters.pkl')
+    with open(file_name, 'wb') as f:
+        pickle.dump(kwargs, f)
 
 
 class FixedIterSaver:

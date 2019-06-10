@@ -60,6 +60,12 @@ def learn(envid, nb_max_clusters, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', 
     max_kl_cdel = 2 * max_kl / 3.
     e_reduc = .015/4
 
+    rllog.save_parameters(log_name,
+        envid=envid, nb_max_clusters=nb_max_clusters, nb_vfunc=nb_vfunc, seed=seed, max_ts=max_ts,
+        lr_v=lr_v, lr_p=lr_p, lr_cw=lr_cw, nb_epochs_v=nb_epochs_v, batch_size_pupdate=batch_size_pupdate,
+        nb_epochs_clus=nb_epochs_clus, nb_epochs_params=nb_epochs_params, max_kl=max_kl,
+        max_kl_cw=max_kl_cw, max_kl_cdel=max_kl_cdel, e_reduc=e_reduc)
+
     s_dim = env.observation_space.shape[0]
     a_dim = env.action_space.shape[0]
     obs_filter = RunningMeanStdFilter(s_dim, min_clamp=-5, max_clamp=5)
@@ -261,7 +267,8 @@ def learn(envid, nb_max_clusters, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', 
         # print('avg membership', avgm)
         print('avg membership', torch.sort(avgm[avgm > torch.max(avgm) / 100], descending=True)[0].detach().numpy())
         print('avg membership of first ten clusters', torch.sum(torch.sort(avgm, descending=True)[0][:10]).detach().numpy())
-        print('cweights', policy_torch.cweights)
+        print('cweights', policy_torch.cweights.detach().numpy())
+        print('-------------------------------------------------------------------------------------------------------')
         # print('iter time', time.time() - iter_start)
         if log_name is not None:
             policy_saver.next_iter()
