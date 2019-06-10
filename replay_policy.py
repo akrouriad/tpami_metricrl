@@ -4,12 +4,21 @@ import numpy as np
 import pybullet_envs
 import gym
 import data_handling as dat
+import pickle
 
 
-def replay(envid, log_name, iteration, seed=0, n_epochs=1, min_sample_per_iter=3000):
+def replay(log_name, iteration, envid='', seed=0, n_epochs=1, min_sample_per_iter=3000):
     print('Metric RL Replay')
-    print('envid:', envid)
     print('log file:', log_name)
+
+    parameters_file = os.path.join(log_name, 'parameters.pkl')
+
+    if not envid:
+        with open(parameters_file, 'rb') as f:
+            params_dict = pickle.load(f)
+            envid = params_dict['envid']
+
+    print('envid:', envid)
 
     if '- ' + envid in pybullet_envs.getList():
         import pybullet
@@ -46,8 +55,8 @@ def replay(envid, log_name, iteration, seed=0, n_epochs=1, min_sample_per_iter=3
 
 if __name__ == '__main__':
     # replay(envid='BipedalWalker-v2', log_name='clus5', iteration=194, seed=0)
-    log_name = 'log/hopper_bul/projection_2019-06-10_11-28-19_5'
+    log_name = 'log/hopper_bul/projection_2019-06-10_11-54-56_5'
     print('replaying cluster:', log_name)
-    replay(envid='HopperBulletEnv-v0', log_name=log_name, iteration=1, seed=0)
+    replay(log_name=log_name, iteration=30, seed=0) # add envid='HopperBulletEnv-v0' if parameters.pkl is missing
     # import roboschool
     # replay(envid='RoboschoolHopper-v1', seed=0, log_name='hopp5', iteration=85)
