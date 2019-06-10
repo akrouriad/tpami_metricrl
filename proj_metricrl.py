@@ -33,7 +33,7 @@ class TwoPhaseEntropProfile:
             return self._e_thresh - self._iter * self._e_reduc
 
 
-def learn(envid, nb_max_clusters, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, aggreg_type='Min', min_sample_per_iter=3000):
+def learn(envid, nb_max_clusters, std_0=0.2, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, aggreg_type='Min', min_sample_per_iter=3000):
     print('Metric RL')
     print('Params: nb_vfunc {} norma {} aggreg_type {} max_ts {} seed {} log_name {}'.format(nb_vfunc, norma, aggreg_type, max_ts, seed, log_name))
 
@@ -61,7 +61,7 @@ def learn(envid, nb_max_clusters, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', 
     e_reduc = .015/4
 
     rllog.save_parameters(log_name,
-        envid=envid, nb_max_clusters=nb_max_clusters, nb_vfunc=nb_vfunc, seed=seed, max_ts=max_ts,
+        envid=envid, nb_max_clusters=nb_max_clusters, std_0=std_0, nb_vfunc=nb_vfunc, seed=seed, max_ts=max_ts,
         lr_v=lr_v, lr_p=lr_p, lr_cw=lr_cw, nb_epochs_v=nb_epochs_v, batch_size_pupdate=batch_size_pupdate,
         nb_epochs_clus=nb_epochs_clus, nb_epochs_params=nb_epochs_params, max_kl=max_kl,
         max_kl_cw=max_kl_cw, max_kl_cdel=max_kl_cdel, e_reduc=e_reduc)
@@ -81,7 +81,7 @@ def learn(envid, nb_max_clusters, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', 
 
     value_from_list = ValueFunctionList(value_fct)
 
-    policy_torch = MetricPolicy(a_dim)
+    policy_torch = MetricPolicy(a_dim, std_0=std_0)
     policy = lambda obs: torch.squeeze(policy_torch(torch.tensor(obs, dtype=torch.float)), dim=0).detach().numpy()
     cw_optim = torch.optim.Adam(policy_torch.cweights_list.parameters(), lr=lr_cw)
     p_optim = torch.optim.Adam([par for par in policy_torch.means_list.parameters()] + [policy_torch.logsigs], lr=lr_p)

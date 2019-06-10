@@ -44,7 +44,7 @@ class Grad1Abs(torch.autograd.Function):
 
 
 class MetricPolicy(nn.Module):
-    def __init__(self, a_dim, hard_clustering=False, hardning_fnc=None):
+    def __init__(self, a_dim, std_0=1.0, hard_clustering=False, hardning_fnc=None):
         super().__init__()
         self.a_dim = a_dim
         self.centers = None
@@ -54,7 +54,7 @@ class MetricPolicy(nn.Module):
         self.cweights_list = nn.ParameterList().append(nn.Parameter(torch.tensor([1.])))
         self.means_list = nn.ParameterList().append(nn.Parameter(torch.zeros(1, a_dim)))
         self.active_cluster_list = [0]
-        self.logsigs = nn.Parameter(torch.zeros(a_dim))
+        self.logsigs = nn.Parameter(torch.ones(a_dim)*np.log(std_0))
         # self.logtemp = torch.tensor(0.7936915159225464)
         # self.mud = torch.tensor(1.1713083982467651)
         self.logtemp = torch.tensor(0.)
