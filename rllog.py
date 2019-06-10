@@ -18,15 +18,18 @@ def generate_log_folder(name, algorithm_name='', postfix='', timestamp=False, ba
 
     folder_name = os.path.join(base_folder, name, algorithm_name)
 
+    network_folder_name = os.path.join(folder_name, 'net')
+
     pathlib.Path(folder_name).mkdir(parents=True)
+    pathlib.Path(network_folder_name).mkdir(parents=True)
 
     return folder_name
 
 
 class FixedIterSaver:
-    def __init__(self, network, directory, verbose=True, iter_to_save=[]):
+    def __init__(self, network, directory, subdir='', verbose=True, iter_to_save=[]):
         self.network = network
-        self.directory = directory
+        self.directory = os.path.join(directory, subdir)
         self.verbose = verbose
         self.nb_iter = 0
         self.iter_to_save = np.asarray(iter_to_save)

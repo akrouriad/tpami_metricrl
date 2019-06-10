@@ -88,7 +88,7 @@ def learn(envid, nb_max_clusters, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', 
     iter = 0
     if log_name is not None:
         logger = rllog.PolicyIterationLogger(log_name)
-        policy_saver = rllog.FixedIterSaver(policy_torch, log_name, verbose=False)
+        policy_saver = rllog.FixedIterSaver(policy_torch, log_name, subdir='net', verbose=False)
 
     while True:
         iter_start = time.time()
@@ -271,7 +271,6 @@ if __name__ == '__main__':
     nb_max_cluster = 5
     log_name = rllog.generate_log_folder('hopper_bul', 'projection', str(nb_max_cluster), True)
     learn(envid='HopperBulletEnv-v0', nb_max_clusters=nb_max_cluster, max_ts=3e6, seed=0, norma='None', log_name=log_name)
-
     # learn(envid='BipedalWalker-v2', nb_max_clusters=5, max_ts=3e6, seed=1, norma='None', log_name='clus5')
-    #learn(envid='RoboschoolHopper-v1', nb_max_clusters=10, max_ts=3e6, seed=0, norma='None', log_name='hopp5')
+    # learn(envid='RoboschoolHopper-v1', nb_max_clusters=10, max_ts=3e6, seed=0, norma='None', log_name='hopp5')
 
