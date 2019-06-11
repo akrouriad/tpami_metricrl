@@ -2,8 +2,8 @@ import rllog
 
 test = False
 local = False
-# dir_out = '/home/ra61casa/cluscomp/'
-dir_out = './cluscomp/'
+dir_out = '/home/ra61casa/cluscomp/'
+# dir_out = './cluscomp/'
 
 base = '_cc'
 # envs = ['BipedalWalker-v2', 'RoboschoolHopper-v1', 'RoboschoolInvertedDoublePendulum-v1', 'RoboschoolWalker2d-v1', 'RoboschoolHalfCheetah-v1', 'RoboschoolAnt-v1', 'MountainCarContinuous-v0']
