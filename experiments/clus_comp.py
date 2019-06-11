@@ -1,5 +1,7 @@
+import rllog
+
 test = False
-local = True
+local = False
 # dir_out = '/home/ra61casa/cluscomp/'
 dir_out = './cluscomp/'
 
@@ -7,8 +9,9 @@ base = '_cc'
 # envs = ['BipedalWalker-v2', 'RoboschoolHopper-v1', 'RoboschoolInvertedDoublePendulum-v1', 'RoboschoolWalker2d-v1', 'RoboschoolHalfCheetah-v1', 'RoboschoolAnt-v1', 'MountainCarContinuous-v0']
 # envs = ['RoboschoolHopper-v1', 'RoboschoolWalker2d-v1', 'RoboschoolHalfCheetah-v1', 'RoboschoolAnt-v1']
 # envs = ['RoboschoolHopper-v1', 'RoboschoolWalker2d-v1', 'BipedalWalker-v2']
-envs = ['BipedalWalker-v2', 'RoboschoolHopper-v1']
-nb_runs = 2
+# envs = ['BipedalWalker-v2', 'RoboschoolHopper-v1']
+envs = ['BipedalWalker-v2']
+nb_runs = 11
 all_par = []
 max_tss = [3e6]
 # normas = ['None', 'Obs', 'All']
@@ -17,9 +20,13 @@ normas = ['None']
 # aggreg_types = ['None', 'Max', 'Min']
 aggreg_types = ['Min']
 # max_cluss = [5, 10, 20, 40]
-max_cluss = [5, 10]
+max_cluss = [5, 10, 20, 40]
 min_sam_iter = 3000
 nb_v = 2
+alg_name = 'proj'
+max_kl = .015
+e_reduc = max_kl
+std_0 = 1.
 # Creating parameters tables
 for max_ts in max_tss:
     for run in range(nb_runs):
@@ -27,15 +34,19 @@ for max_ts in max_tss:
             for norma in normas:
                 for aggreg_type in aggreg_types:
                     for max_clus in max_cluss:
-                        run_name = env + 'sampIt' + str(min_sam_iter) + 'nb_v' + str(nb_v) + 'norma' + norma + 'aggreg' + aggreg_type + 'mts' + str(max_ts / 1e6) + 'm' + 'max_clus' + str(max_clus) + 'run' + str(run)
-                        params = {'envid': env, 'nb_max_clusters': max_clus, 'seed': run, 'log_name': dir_out+run_name, 'max_ts': max_ts, 'norma': norma, 'aggreg_type': aggreg_type, 'nb_vfunc': nb_v, 'min_sample_per_iter': min_sam_iter}
+                        run_name = 'sampIt' + str(min_sam_iter) + 'nb_v' + str(nb_v) + 'norma' + norma + 'aggreg' + \
+                                   aggreg_type + 'mts' + str(max_ts / 1e6) + 'm' + 'max_clus' + str(max_clus) + 'run' + str(run)
+                        log_name = rllog.generate_log_folder(name=env, algorithm_name=alg_name, postfix=run_name, base_folder=dir_out)
+                        params = {'envid': env, 'max_kl': max_kl, 'e_reduc': e_reduc, 'std_0': std_0, 'nb_max_clusters': max_clus,
+                                  'seed': run, 'log_name': log_name, 'max_ts': max_ts, 'norma': norma, 'aggreg_type': aggreg_type,
+                                  'nb_vfunc': nb_v, 'min_sample_per_iter': min_sam_iter}
                         all_par.append(params)
 
 
 # Creating launch scripts
 slurms = []
 nb_proc_per_act = 1
-nb_act = 6
+nb_act = 16
 nb_proc = nb_act * nb_proc_per_act
 for k, i in enumerate(range(0, len(all_par), nb_act)):
     # create python script
