@@ -29,11 +29,11 @@ e_reduc = max_kl / 4
 std_0 = 1.
 # Creating parameters tables
 for max_ts in max_tss:
-    for run in range(nb_runs):
-        for env in envs:
-            for norma in normas:
-                for aggreg_type in aggreg_types:
-                    for max_clus in max_cluss:
+    for env in envs:
+        for norma in normas:
+            for aggreg_type in aggreg_types:
+                for max_clus in max_cluss:
+                    for run in range(nb_runs):
                         run_name = 'sampIt' + str(min_sam_iter) + 'nb_v' + str(nb_v) + 'norma' + norma + 'aggreg' + \
                                    aggreg_type + 'mts' + str(max_ts / 1e6) + 'm' + 'max_clus' + str(max_clus) + 'run' + str(run)
                         log_name = rllog.generate_log_folder(name=env, algorithm_name=alg_name, postfix=run_name, base_folder=dir_out)
