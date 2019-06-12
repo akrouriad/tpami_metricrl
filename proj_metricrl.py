@@ -3,7 +3,7 @@ import torch.nn.functional as F
 import numpy as np
 # import pybullet_envs
 # import pybullet
-#import roboschool
+import roboschool
 import gym
 import data_handling as dat
 import rllog
