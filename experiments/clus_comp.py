@@ -9,8 +9,8 @@ base = '_cc'
 # envs = ['BipedalWalker-v2', 'RoboschoolHopper-v1', 'RoboschoolInvertedDoublePendulum-v1', 'RoboschoolWalker2d-v1', 'RoboschoolHalfCheetah-v1', 'RoboschoolAnt-v1', 'MountainCarContinuous-v0']
 # envs = ['RoboschoolHopper-v1', 'RoboschoolWalker2d-v1', 'RoboschoolHalfCheetah-v1', 'RoboschoolAnt-v1']
 # envs = ['RoboschoolHopper-v1', 'RoboschoolWalker2d-v1', 'BipedalWalker-v2']
-# envs = ['BipedalWalker-v2', 'RoboschoolHopper-v1']
-envs = ['BipedalWalker-v2']
+envs = ['RoboschoolHopper-v1']
+# envs = ['BipedalWalker-v2']
 nb_runs = 11
 all_par = []
 max_tss = [3e6]
@@ -25,7 +25,7 @@ min_sam_iter = 3000
 nb_v = 2
 alg_name = 'proj'
 max_kl = .015
-e_reduc = max_kl
+e_reduc = max_kl / 4
 std_0 = 1.
 # Creating parameters tables
 for max_ts in max_tss:
