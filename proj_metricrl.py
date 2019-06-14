@@ -1,8 +1,8 @@
 import torch
 import torch.nn.functional as F
 import numpy as np
-# import pybullet_envs
-# import pybullet
+import pybullet_envs
+import pybullet
 import roboschool
 import gym
 import data_handling as dat
@@ -277,7 +277,7 @@ def learn(envid, nb_max_clusters, max_kl=.015, e_reduc=.015, std_0=0.2, nb_vfunc
 if __name__ == '__main__':
     nb_max_cluster = 5
     log_name = rllog.generate_log_folder('hopper_bul', 'projection', str(nb_max_cluster), True)
-    # learn(envid='HopperBulletEnv-v0', nb_max_clusters=nb_max_cluster, max_ts=3e6, seed=0, norma='None', log_name=log_name)
-    learn(envid='BipedalWalker-v2', nb_max_clusters=5, max_ts=3e6, seed=1, norma='None', log_name=log_name)
+    learn(envid='HopperBulletEnv-v0', nb_max_clusters=nb_max_cluster, max_ts=3e6, seed=0, norma='None', log_name=log_name)
+    # learn(envid='BipedalWalker-v2', nb_max_clusters=5, max_ts=3e6, seed=1, norma='None', log_name=log_name)
     # learn(envid='RoboschoolHopper-v1', nb_max_clusters=10, max_ts=3e6, seed=0, norma='None', log_name='hopp5')
 
