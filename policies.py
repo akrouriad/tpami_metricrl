@@ -124,7 +124,7 @@ class MetricPolicy(nn.Module):
         w = self.membership(s)
 
         # compute weighted means
-        return w.matmul(self.means)
+        return w.matmul(self.get_cmeans_params())
 
     def get_chol(self):
         return torch.diag(torch.exp(self.logsigs))
@@ -156,7 +156,17 @@ class MetricPolicy(nn.Module):
             self.cweights_list[self.active_cluster_list[k]].data = val.unsqueeze(0)
         self.update_clustering()
 
+    @ staticmethod
+    def arctanh(x):
+        val = 0.5 * torch.log((1 + x) / (1 - x))
+        return val
+
     def set_cmeans_param(self, cmeans):
         for k, cm in enumerate(cmeans):
+            # self.means_list[self.active_cluster_list[k]].data = MetricPolicy.arctanh(cm.unsqueeze(0))
             self.means_list[self.active_cluster_list[k]].data = cm.unsqueeze(0)
         self.update_clustering()
+
+    def get_cmeans_params(self):
+        # return torch.tanh(self.means)
+        return self.means

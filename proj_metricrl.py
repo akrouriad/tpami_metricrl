@@ -33,7 +33,7 @@ class TwoPhaseEntropProfile:
             return self._e_thresh - self._iter * self._e_reduc
 
 
-def learn(envid, nb_max_clusters, std_0=0.2, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, aggreg_type='Min', min_sample_per_iter=3000):
+def learn(envid, nb_max_clusters, std_0=1.0, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, aggreg_type='Min', min_sample_per_iter=3000):
     print('Metric RL')
     print('Params: nb_vfunc {} norma {} aggreg_type {} max_ts {} seed {} log_name {}'.format(nb_vfunc, norma, aggreg_type, max_ts, seed, log_name))
 
@@ -126,7 +126,7 @@ def learn(envid, nb_max_clusters, std_0=0.2, nb_vfunc=2, seed=0, max_ts=1e6, nor
         old_chol = policy_torch.get_chol().detach()
         wq = policy_torch.unormalized_membership(obs).detach()
         old_cweights = policy_torch.cweights.detach()
-        old_cmeans = policy_torch.means.detach()
+        old_cmeans = policy_torch.get_cmeans_params().detach()
         old_means = policy_torch.get_weighted_means(obs).detach()
         old_pol_dist = policy_torch.distribution(obs)
         old_log_p = policy_torch.log_prob(obs, act).detach()
@@ -195,7 +195,7 @@ def learn(envid, nb_max_clusters, std_0=0.2, nb_vfunc=2, seed=0, max_ts=1e6, nor
         eta = cweight_mean_proj(w, means, wq, old_means, old_cov_d['prec'], max_kl_cw)
         weta = eta * w + (1. - eta) * wq
         weta /= torch.sum(weta, dim=1, keepdim=True) + 1 #!
-        final_kl = proj.mean_diff(weta.mm(policy_torch.means), old_means, old_cov_d['prec'])
+        final_kl = proj.mean_diff(weta.mm(policy_torch.get_cmeans_params()), old_means, old_cov_d['prec'])
         cweights = eta * torch.abs(policy_torch.cweights) + (1 - eta) * torch.abs(old_cweights)
         policy_torch.set_cweights_param(cweights)
 
@@ -246,7 +246,8 @@ def learn(envid, nb_max_clusters, std_0=0.2, nb_vfunc=2, seed=0, max_ts=1e6, nor
         chol = policy_torch.get_chol()
         proj_d = proj.lin_gauss_kl_proj(means, chol, intermediate_means, old_means,
                                         old_cov_d['cov'], old_cov_d['prec'], old_cov_d['logdetcov'], max_kl, e_lb)
-        cmeans = proj_d['eta_mean'] * policy_torch.means + (1 - proj_d['eta_mean']) * old_cmeans
+        cmeans = proj_d['eta_mean'] * policy_torch.get_cmeans_params() + (1 - proj_d['eta_mean']) * old_cmeans
+
         # if proj_d['eta_mean'] < 1.:
         #     print('eta_mean', proj_d['eta_mean'])
         #     proj.lin_gauss_kl_proj(means, chol, intermediate_means, old_means,
@@ -277,7 +278,7 @@ def learn(envid, nb_max_clusters, std_0=0.2, nb_vfunc=2, seed=0, max_ts=1e6, nor
 if __name__ == '__main__':
     nb_max_cluster = 5
     log_name = rllog.generate_log_folder('hopper_bul', 'projection', str(nb_max_cluster), True)
-    learn(envid='HopperBulletEnv-v0', nb_max_clusters=nb_max_cluster, max_ts=3e6, seed=0, norma='None', log_name=log_name)
+    learn(envid='HopperBulletEnv-v0', nb_max_clusters=nb_max_cluster, std_0=0.8, max_ts=3e6, seed=0, norma='None', log_name=log_name)
     # learn(envid='BipedalWalker-v2', nb_max_clusters=5, max_ts=3e6, seed=1, norma='None', log_name='clus5')
     # learn(envid='RoboschoolHopper-v1', nb_max_clusters=10, max_ts=3e6, seed=0, norma='None', log_name='hopp5')
 
