@@ -3,7 +3,7 @@ import torch.nn.functional as F
 import numpy as np
 import pybullet_envs
 import pybullet
-#import roboschool
+import roboschool
 import gym
 import data_handling as dat
 import rllog
@@ -17,7 +17,7 @@ import time
 
 class TwoPhaseEntropProfile:
     def __init__(self, policy, e_reduc, e_thresh):
-        self.init_entropy = policy.entropy()
+        self._init_entropy_at_phase2 = None
         self._policy = policy
         self._e_reduc = e_reduc
         self._e_thresh = e_thresh
@@ -28,18 +28,20 @@ class TwoPhaseEntropProfile:
         if self._phase == 1 and self._policy.entropy() > self._e_thresh:
             return -10000.
         else:
-            self._phase = 2
+            if self._phase == 1:
+                self._init_entropy_at_phase2 = self._policy.entropy()
+                self._phase = 2
             self._iter += 1
-            return self._e_thresh - self._iter * self._e_reduc
+            return self._init_entropy_at_phase2 - self._iter * self._e_reduc
 
 
-def learn(envid, nb_max_clusters, std_0=1.0, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, aggreg_type='Min', min_sample_per_iter=3000):
+def learn(envid, nb_max_clusters, max_kl=.015, e_reduc=.015, std_0=0.2, nb_vfunc=2, seed=0, max_ts=1e6, norma='None', log_name=None, aggreg_type='Min', min_sample_per_iter=3000):
     print('Metric RL')
     print('Params: nb_vfunc {} norma {} aggreg_type {} max_ts {} seed {} log_name {}'.format(nb_vfunc, norma, aggreg_type, max_ts, seed, log_name))
 
-    if '- ' + envid in pybullet_envs.getList():
-        import pybullet
-        pybullet.connect(pybullet.DIRECT)
+    # if '- ' + envid in pybullet_envs.getList():
+    #     import pybullet
+    #     pybullet.connect(pybullet.DIRECT)
     env = gym.make(envid)
     env.seed(seed)
     np.random.seed(seed)
@@ -55,10 +57,8 @@ def learn(envid, nb_max_clusters, std_0=1.0, nb_vfunc=2, seed=0, max_ts=1e6, nor
     batch_size_pupdate = 64
     nb_epochs_clus = 20
     nb_epochs_params = 20
-    max_kl = .015
     max_kl_cw = max_kl / 2.
     max_kl_cdel = 2 * max_kl / 3.
-    e_reduc = .015/4
 
     rllog.save_parameters(log_name,
         envid=envid, nb_max_clusters=nb_max_clusters, std_0=std_0, nb_vfunc=nb_vfunc, seed=seed, max_ts=max_ts,
@@ -279,6 +279,6 @@ if __name__ == '__main__':
     nb_max_cluster = 5
     log_name = rllog.generate_log_folder('hopper_bul', 'projection', str(nb_max_cluster), True)
     learn(envid='HopperBulletEnv-v0', nb_max_clusters=nb_max_cluster, std_0=0.8, max_ts=3e6, seed=0, norma='None', log_name=log_name)
-    # learn(envid='BipedalWalker-v2', nb_max_clusters=5, max_ts=3e6, seed=1, norma='None', log_name='clus5')
+    # learn(envid='BipedalWalker-v2', nb_max_clusters=5, max_ts=3e6, seed=1, norma='None', log_name=log_name)
     # learn(envid='RoboschoolHopper-v1', nb_max_clusters=10, max_ts=3e6, seed=0, norma='None', log_name='hopp5')
 
