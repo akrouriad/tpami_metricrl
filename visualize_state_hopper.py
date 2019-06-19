@@ -17,7 +17,7 @@ if __name__ == '__main__':
     log_name = 'Results/PyBulletHopper/projection_2019-06-07_15-37-01_5'
     iteration = 929
 
-    offset = 0.5
+    state_reconstruction_precision = 1e-7
 
     pybullet.connect(pybullet.DIRECT)
     env = gym.make('HopperBulletEnv-v0')
@@ -30,8 +30,7 @@ if __name__ == '__main__':
     env.reset()
     robot = env.env.robot
     robot_body = robot.robot_body
-    robot_body.reset_position([0, 0, offset])
-    
+
     print('- Displaying neutral position')
     input()
 
@@ -44,7 +43,7 @@ if __name__ == '__main__':
         print('- Displaying cluster ', n)
         print(cluster)
 
-        z = cluster[0] + offset
+        z = cluster[0]
         v = cluster[3:6]/0.3
         r = cluster[6]
         p = cluster[7]
@@ -55,10 +54,6 @@ if __name__ == '__main__':
 
 
         joint_states = cluster[8:-1]
-
-        position = np.array([0, 0, z])
-        orientation = pybullet.getQuaternionFromEuler([r, p, 0])
-        euler = pybullet.getEulerFromQuaternion(orientation)
         # print(orientation, euler, [r, p, 0])
 
         for i, j in enumerate(robot.ordered_joints):
@@ -68,10 +63,23 @@ if __name__ == '__main__':
             #print('joint: ', j_theta, j_omega)
             j.reset_current_position(j_theta, j_omega)
 
-        # print('robot_body.get_position: ', robot_body.get_position())
+        #parts_xyz = np.array([p.pose().xyz() for p in robot.parts.values()]).flatten()
+
+        position = np.array([0, 0, z])
+        orientation = pybullet.getQuaternionFromEuler([r, p, 0])
+        euler = pybullet.getEulerFromQuaternion(orientation)
+
         robot_body.reset_pose(position, orientation)
+        current_z = robot.calc_state()[0]
+
+        delta_z_current = z - current_z
+
+        robot_body.reset_position([0, 0, z+delta_z_current])
         robot_body.reset_velocity(linearVelocity=v)
-        # print('robot_body.get_position (after reset): ', robot_body.get_position())
-        print(cluster - robot.calc_state())
+
+        wrong_state = np.any((cluster - robot.calc_state()) > state_reconstruction_precision)
+        print('wrong state? ', wrong_state)
+        if(wrong_state):
+            print(cluster - robot.calc_state())
 
         input()
