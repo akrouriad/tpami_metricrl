@@ -55,8 +55,10 @@ def replay(log_name, iteration, envid='', seed=0, n_epochs=1, min_sample_per_ite
 
 if __name__ == '__main__':
     # replay(envid='BipedalWalker-v2', log_name='clus5', iteration=194, seed=0)
-    log_name = 'log/hopper_bul/projection_2019-06-10_11-54-56_5'
-    print('replaying cluster:', log_name)
-    replay(log_name=log_name, iteration=30, seed=0) # add envid='HopperBulletEnv-v0' if parameters.pkl is missing
+    #log_name = 'log/hopper_bul/projection_2019-06-10_11-54-56_5'
+    log_name = 'Results/PyBulletHopper/projection_2019-06-07_15-37-01_5'
+    print('replaying from folder: ', log_name)
+    replay(log_name=log_name, iteration=929, seed=0, envid='HopperBulletEnv-v0')
+    # replay(log_name=log_name, iteration=30, seed=0) # add envid='HopperBulletEnv-v0' if parameters.pkl is missing
     # import roboschool
     # replay(envid='RoboschoolHopper-v1', seed=0, log_name='hopp5', iteration=85)
