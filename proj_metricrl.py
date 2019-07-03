@@ -3,7 +3,7 @@ import torch.nn.functional as F
 import numpy as np
 import pybullet_envs
 import pybullet
-import roboschool
+#import roboschool
 import gym
 import data_handling as dat
 import rllog
@@ -60,11 +60,14 @@ def learn(envid, nb_max_clusters, max_kl=.015, e_reduc=.015, std_0=0.2, nb_vfunc
     max_kl_cw = max_kl / 2.
     max_kl_cdel = 2 * max_kl / 3.
 
-    rllog.save_parameters(log_name,
-        envid=envid, nb_max_clusters=nb_max_clusters, std_0=std_0, nb_vfunc=nb_vfunc, seed=seed, max_ts=max_ts,
-        lr_v=lr_v, lr_p=lr_p, lr_cw=lr_cw, nb_epochs_v=nb_epochs_v, batch_size_pupdate=batch_size_pupdate,
-        nb_epochs_clus=nb_epochs_clus, nb_epochs_params=nb_epochs_params, max_kl=max_kl,
-        max_kl_cw=max_kl_cw, max_kl_cdel=max_kl_cdel, e_reduc=e_reduc)
+    if log_name is not None:
+        rllog.save_parameters(log_name,
+                              envid=envid, nb_max_clusters=nb_max_clusters,
+                              std_0=std_0, nb_vfunc=nb_vfunc, seed=seed, max_ts=max_ts,
+                              lr_v=lr_v, lr_p=lr_p, lr_cw=lr_cw, nb_epochs_v=nb_epochs_v,
+                              batch_size_pupdate=batch_size_pupdate, nb_epochs_clus=nb_epochs_clus,
+                              nb_epochs_params=nb_epochs_params, max_kl=max_kl,
+                              max_kl_cw=max_kl_cw, max_kl_cdel=max_kl_cdel, e_reduc=e_reduc)
 
     s_dim = env.observation_space.shape[0]
     a_dim = env.action_space.shape[0]
@@ -277,8 +280,8 @@ def learn(envid, nb_max_clusters, max_kl=.015, e_reduc=.015, std_0=0.2, nb_vfunc
 
 if __name__ == '__main__':
     nb_max_cluster = 5
-    log_name = rllog.generate_log_folder('hopper_bul', 'projection', str(nb_max_cluster), True)
-    learn(envid='HopperBulletEnv-v0', nb_max_clusters=nb_max_cluster, std_0=0.8, max_ts=3e6, seed=0, norma='None', log_name=log_name)
-    # learn(envid='BipedalWalker-v2', nb_max_clusters=5, max_ts=3e6, seed=1, norma='None', log_name=log_name)
+    #log_name = rllog.generate_log_folder('hopper_bul', 'projection', str(nb_max_cluster), True)
+    #learn(envid='HopperBulletEnv-v0', nb_max_clusters=nb_max_cluster, std_0=0.8, max_ts=3e6, seed=0, norma='None', log_name=log_name)
+    learn(envid='BipedalWalker-v2', nb_max_clusters=5, max_ts=3e6, seed=1, norma='None', log_name=None)
     # learn(envid='RoboschoolHopper-v1', nb_max_clusters=10, max_ts=3e6, seed=0, norma='None', log_name='hopp5')
 
