@@ -18,24 +18,23 @@ from policies import MetricPolicy
 import gaussian_proj as proj
 
 
-def get_targets(v_func, x, x_n, rwd, done, discount, lam):
-    # computes v_update targets
-    v_values = v_func(x)
-    v_values_next = v_func(x_n)
-    gen_adv = np.empty_like(v_values)
-    for rev_k, v in enumerate(reversed(v_values)):
-        k = len(v_values) - rev_k - 1
-        if done[k] or rev_k == 0:
-            gen_adv[k] = rwd[k] - v_values[k]
-            if not done[k]:
-                gen_adv[k] += discount * v_values_next[k]
+def get_targets(v_func, x, x_n, rwd, absorbing, last, discount, lam):
+    v = v_func(x)
+    v_next = v_func(x_n)
+    gen_adv = np.empty_like(v)
+    for rev_k, _ in enumerate(reversed(v)):
+        k = len(v) - rev_k - 1
+        if last[k] or rev_k == 0:
+            gen_adv[k] = rwd[k] - v[k]
+            if not absorbing[k]:
+                gen_adv[k] += discount * v_next[k]
         else:
-            gen_adv[k] = rwd[k] + discount * v_values_next[k] - v_values[k] + discount * lam * gen_adv[k + 1]
-    return gen_adv + v_values, gen_adv
+            gen_adv[k] = rwd[k] + discount * v_next[k] - v[k] + discount * lam * gen_adv[k + 1]
+    return gen_adv + v, gen_adv
 
 
-def get_adv(v_func, x, xn,  rwd, done, discount, lam):
-    _, adv = get_targets(v_func, x, xn, rwd, done, discount, lam)
+def get_adv(v_func, x, xn,  rwd, absorbing, last, discount, lam):
+    _, adv = get_targets(v_func, x, xn, rwd, absorbing, last, discount, lam)
     return adv
 
 
@@ -240,7 +239,7 @@ class ProjectionMetricRL(Agent):
 
     def fit(self, dataset):
         tqdm.write('Iteration ' + str(self._iter))
-        x, u, r, xn, ab, last = parse_dataset(dataset)
+        x, u, r, xn, absorbing, last = parse_dataset(dataset)
         x = x.astype(np.float32)
         u = u.astype(np.float32)
         r = r.astype(np.float32)
@@ -250,7 +249,7 @@ class ProjectionMetricRL(Agent):
         act = torch.tensor(u, dtype=torch.float)
         rwd = torch.tensor(r, dtype=torch.float)
         avg_rwd = np.sum(r) / np.sum(last)  # TODO check this
-        np_adv = get_adv(self._V, x, xn, r, ab, self.mdp_info.gamma, self._lambda)
+        np_adv = get_adv(self._V, x, xn, r, absorbing, last, self.mdp_info.gamma, self._lambda)
         np_adv = (np_adv - np.mean(np_adv)) / (np.std(np_adv) + 1e-8)
         adv = torch.tensor(np_adv, dtype=torch.float)
 
@@ -266,7 +265,7 @@ class ProjectionMetricRL(Agent):
 
         nb_cluster, wq, old_cweights, old_cmeans = self._add_new_clusters(obs, act, adv, wq, old_cweights, old_cmeans)
 
-        np_v_target, _ = get_targets(self._V, x, xn, r, ab, self.mdp_info.gamma, self._lambda)
+        np_v_target, _ = get_targets(self._V, x, xn, r, absorbing, last, self.mdp_info.gamma, self._lambda)
         self._V.fit(x, np_v_target, n_epochs=self._nb_epochs_v)
 
         self._update_cluster_weights(obs, act, wq, old_means, old_log_p, adv, old_cov_d, old_cweights)

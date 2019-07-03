@@ -50,7 +50,7 @@ if __name__ == '__main__':
                   nb_epochs_clus=20,
                   nb_epochs_params=20,
                   batch_size=64,
-                  nb_max_clusters=10
+                  nb_max_clusters=5
                   )
 
     # experiment(env_id='HopperBulletEnv-v0', n_epochs=100, n_steps=30000, n_steps_per_fit=3000, n_steps_test=3000,
