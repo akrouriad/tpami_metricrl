@@ -99,13 +99,13 @@ class TmpPolicy(Policy):
 
 
 class ProjectionMetricRL(Agent):
-    def __init__(self, mdp_info, std_0, lr_v, lr_p, lr_cw, max_kl, e_reduc, nb_max_clusters, nb_epochs_v,
-                 nb_epochs_clus, nb_epochs_params, batch_size):
+    def __init__(self, mdp_info, std_0, lr_v, lr_p, lr_cw, max_kl, e_reduc, n_max_clusters, n_epochs_v,
+                 n_models_v, v_prediction_type, n_epochs_clus, n_epochs_params, batch_size, lam):
 
-        self._nb_max_clusters = nb_max_clusters
-        self._nb_epochs_clus = nb_epochs_clus
-        self._nb_epochs_params = nb_epochs_params
-        self._nb_epochs_v = nb_epochs_v
+        self._n_max_clusters = n_max_clusters
+        self._n_epochs_clus = n_epochs_clus
+        self._n_epochs_params = n_epochs_params
+        self._n_epochs_v = n_epochs_v
         self._batch_size = batch_size
 
         self._policy_torch = MetricPolicy(mdp_info.action_space.shape[0], std_0=std_0)
@@ -120,7 +120,7 @@ class ProjectionMetricRL(Agent):
         self._max_kl_cw = self._max_kl / 2.
         self._max_kl_cdel = 2 * self._max_kl / 3.
 
-        self._lambda = 0.95
+        self._lambda = lam
 
         h_layer_width = 64
         h_layer_length = 2
@@ -132,7 +132,11 @@ class ProjectionMetricRL(Agent):
                                    loss=F.smooth_l1_loss,
                                    input_shape=input_shape,
                                    output_shape=(1,),
-                                   size_list=size_list, activation_list=None, preproc=None)
+                                   size_list=size_list,
+                                   activation_list=None,
+                                   preproc=None,
+                                   n_models=n_models_v,
+                                   prediction=v_prediction_type)
 
         self._V = Regressor(PyTorchApproximator, **approximator_params)
 
@@ -144,8 +148,8 @@ class ProjectionMetricRL(Agent):
 
     def _add_new_clusters(self, obs, act, adv, wq, old_cweights, old_cmeans):
         nb_cluster = len(self._policy_torch.cweights)
-        if nb_cluster < self._nb_max_clusters:
-            _, indices = torch.topk(adv, self._nb_max_clusters - nb_cluster, dim=0)
+        if nb_cluster < self._n_max_clusters:
+            _, indices = torch.topk(adv, self._n_max_clusters - nb_cluster, dim=0)
             for index in indices:
                 new_mean = np.clip(act[[index]], -1, 1)
                 self._policy_torch.add_cluster(obs[[index]], new_mean)
@@ -162,7 +166,7 @@ class ProjectionMetricRL(Agent):
         return nb_cluster, wq, old_cweights, old_cmeans
 
     def _update_cluster_weights(self, obs, act, wq, old_means, old_log_p, adv, old_cov_d, old_cweights):
-        for epoch in range(self._nb_epochs_clus):
+        for epoch in range(self._n_epochs_clus):
             for obs_i, act_i, wq_i, old_means_i, old_log_p_i, adv_i in \
                     minibatch_generator(self._batch_size, obs, act, wq, old_means, old_log_p, adv):
                 self._cw_optim.zero_grad()
@@ -208,7 +212,7 @@ class ProjectionMetricRL(Agent):
         return deleted_clu
 
     def _update_mean_and_covariance(self, obs, act, adv, intermediate_means, old_means, old_cov_d, old_log_p, e_lb):
-        for epoch in range(self._nb_epochs_params):
+        for epoch in range(self._n_epochs_params):
             for obs_i, act_i, adv_i, intermediate_means_i, old_means_i, old_log_p_i in \
                     minibatch_generator(self._batch_size, obs, act, adv, intermediate_means, old_means, old_log_p):
 
@@ -266,7 +270,7 @@ class ProjectionMetricRL(Agent):
         nb_cluster, wq, old_cweights, old_cmeans = self._add_new_clusters(obs, act, adv, wq, old_cweights, old_cmeans)
 
         np_v_target, _ = get_targets(self._V, x, xn, r, absorbing, last, self.mdp_info.gamma, self._lambda)
-        self._V.fit(x, np_v_target, n_epochs=self._nb_epochs_v)
+        self._V.fit(x, np_v_target, n_epochs=self._n_epochs_v)
 
         self._update_cluster_weights(obs, act, wq, old_means, old_log_p, adv, old_cov_d, old_cweights)
 
