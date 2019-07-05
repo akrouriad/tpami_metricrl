@@ -2,7 +2,6 @@ import numpy as np
 from tqdm import tqdm
 
 import torch
-import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 
@@ -15,59 +14,7 @@ from mushroom.utils.minibatches import minibatch_generator
 from .cluster_weight_proj import cweight_mean_proj
 from .policies import PyTorchPolicy, MetricPolicy
 from .gaussian_proj import mean_diff, lin_gauss_kl_proj, utils_from_chol
-
-
-def get_targets(v_func, x, x_n, rwd, absorbing, last, discount, lam):
-    v = v_func(x)
-    v_next = v_func(x_n)
-    gen_adv = np.empty_like(v)
-    for rev_k, _ in enumerate(reversed(v)):
-        k = len(v) - rev_k - 1
-        if last[k] or rev_k == 0:
-            gen_adv[k] = rwd[k] - v[k]
-            if not absorbing[k]:
-                gen_adv[k] += discount * v_next[k]
-        else:
-            gen_adv[k] = rwd[k] + discount * v_next[k] - v[k] + discount * lam * gen_adv[k + 1]
-    return gen_adv + v, gen_adv
-
-
-def get_adv(v_func, x, xn,  rwd, absorbing, last, discount, lam):
-    _, adv = get_targets(v_func, x, xn, rwd, absorbing, last, discount, lam)
-    return adv
-
-
-class MLP(nn.Module):
-    def __init__(self, input_shape, output_shape, size_list, activation_list=None, preproc=None, **kwargs):
-        super().__init__()
-        self.size_list = [input_shape[0]] + size_list + [output_shape[0]]
-        if not activation_list or activation_list is None:
-            activation_list = [torch.tanh] * (len(self.size_list) - 2) + [None]
-        self.activation_list = activation_list
-        self.preproc = preproc
-        self.layers = nn.ModuleList()
-        for k, kp, activ in zip(self.size_list[:-1], self.size_list[1:], self.activation_list):
-            self.layers.append(nn.Linear(k, kp))
-        self.weights_init()
-
-    def forward(self, x):
-        if self.preproc is not None:
-            x = self.preproc(x)
-
-        for l, a in zip(self.layers, self.activation_list):
-            if a is not None:
-                x = a(l(x))
-            else:
-                x = l(x)
-        return x
-
-    def weights_init(self):
-        for k, activ in enumerate(self.activation_list):
-            if activ is not None:
-                nn.init.xavier_uniform_(self.layers[k].weight, nn.init.calculate_gain(activ.__name__))
-            else:
-                nn.init.xavier_uniform_(self.layers[k].weight)
-            nn.init.zeros_(self.layers[k].bias)
+from .rl_shared import MLP, get_targets, get_adv
 
 
 class TwoPhaseEntropProfile:
@@ -118,8 +65,7 @@ class ProjectionMetricRL(Agent):
         size_list = [h_layer_width] * h_layer_length
         approximator_params = dict(network=MLP,
                                    optimizer={'class': optim.Adam,
-                                              'params': {'lr': lr_v}},#,
-                                              #'weight_decay': 0.1},
+                                              'params': {'lr': lr_v}},
                                    loss=F.mse_loss,
                                    batch_size=h_layer_width,
                                    input_shape=input_shape,
@@ -302,7 +248,7 @@ class ProjectionMetricRL(Agent):
         logging_kl = torch.mean(torch.distributions.kl.kl_divergence(new_pol_dist, old_pol_dist))
         avg_rwd = np.sum(r) / np.sum(last)
         tqdm.write("Iterations Results:\n\trewards {} vf_loss {}\n\tentropy {}  kl {} e_lb {}".format(
-            avg_rwd, logging_ent, logging_verr, logging_kl, e_lb))
+            avg_rwd, logging_verr, logging_ent, logging_kl, e_lb))
         avgm = torch.mean(self._policy_torch.membership(obs), dim=0)
         tqdm.write('avg membership ' +
                    str(torch.sort(avgm[avgm > torch.max(avgm) / 100], descending=True)[0].detach().numpy()))

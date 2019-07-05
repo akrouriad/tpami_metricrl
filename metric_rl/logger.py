@@ -43,12 +43,12 @@ class Logger:
 
     def save(self, network=None, **kwargs):
         if self._directory is not None:
-            self._iter_n += 1
             if network is not None:
                 self.save_network(network, self._iter_n)
 
             for name, array in kwargs.items():
                 self.save_numpy(name, array)
+            self._iter_n += 1
 
     def save_network(self, network, n_it):
         filename = 'network-' + str(n_it) + '.pth'

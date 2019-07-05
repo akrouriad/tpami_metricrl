@@ -10,7 +10,8 @@ from metric_rl.proj_metricrl import ProjectionMetricRL
 from metric_rl.logger import generate_log_folder, save_parameters, Logger
 
 
-def experiment(env_id, horizon, gamma, n_epochs, n_steps, n_steps_per_fit, n_episodes_test, seed, params, log_name=None):
+def experiment(env_id, horizon, gamma, n_epochs, n_steps, n_steps_per_fit, n_episodes_test, seed, params,
+               log_name=None):
     print('Metric RL')
     np.random.seed(seed)
     torch.manual_seed(seed)
