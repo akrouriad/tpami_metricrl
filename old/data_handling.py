@@ -1,5 +1,4 @@
 import numpy as np
-import torch
 from time import sleep
 sleep(0.05)
 

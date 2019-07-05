@@ -7,15 +7,14 @@ import torch.optim as optim
 import torch.nn.functional as F
 
 from mushroom.algorithms.agent import Agent
-from mushroom.policy import Policy
 from mushroom.approximators import Regressor
 from mushroom.approximators.parametric import PyTorchApproximator
 from mushroom.utils.dataset import parse_dataset
 from mushroom.utils.minibatches import minibatch_generator
 
-from cluster_weight_proj import cweight_mean_proj
-from policies import MetricPolicy
-import gaussian_proj as proj
+from .cluster_weight_proj import cweight_mean_proj
+from .policies import PyTorchPolicy, MetricPolicy
+from .gaussian_proj import mean_diff, lin_gauss_kl_proj, utils_from_chol
 
 
 def get_targets(v_func, x, x_n, rwd, absorbing, last, discount, lam):
@@ -89,20 +88,6 @@ class TwoPhaseEntropProfile:
             return self._e_thresh - self._iter * self._e_reduc
 
 
-class TmpPolicy(Policy):
-    def __init__(self, network):
-        self._network = network
-
-    def __call__(self, *args):
-        raise NotImplementedError
-
-    def draw_action(self, state):
-        return torch.squeeze(self._network(torch.tensor(state, dtype=torch.float)), dim=0).detach().numpy()
-
-    def reset(self):
-        pass
-
-
 class ProjectionMetricRL(Agent):
     def __init__(self, mdp_info, std_0, lr_v, lr_p, lr_cw, max_kl, max_kl_cw, max_kl_cdel, e_reduc, n_max_clusters,
                  n_epochs_v, n_models_v, v_prediction_type, n_epochs_clus, n_epochs_params, batch_size, lam):
@@ -150,7 +135,7 @@ class ProjectionMetricRL(Agent):
 
         self._iter = 1
 
-        policy = TmpPolicy(self._policy_torch)
+        policy = PyTorchPolicy(self._policy_torch)
 
         super().__init__(policy, mdp_info, None)
 
@@ -191,12 +176,12 @@ class ProjectionMetricRL(Agent):
     def _project_cluster_weights(self, obs, old_means, old_cov_d, wq, old_cweights):
         w = self._policy_torch.unormalized_membership(obs)
         means = self._policy_torch.get_weighted_means(obs)
-        init_kl = proj.mean_diff(means, old_means, old_cov_d['prec'])
+        init_kl = mean_diff(means, old_means, old_cov_d['prec'])
         # eta = ls_cweight_mean_proj(w, means, wq, old_means, old_cov_d['prec'], kl_cluster, cmeans=old_cmeans)
         eta = cweight_mean_proj(w, means, wq, old_means, old_cov_d['prec'], self._max_kl_cw)
         weta = eta * w + (1. - eta) * wq
         weta /= torch.sum(weta, dim=1, keepdim=True) + 1  # !
-        final_kl = proj.mean_diff(weta.mm(self._policy_torch.get_cmeans_params()), old_means, old_cov_d['prec'])
+        final_kl = mean_diff(weta.mm(self._policy_torch.get_cmeans_params()), old_means, old_cov_d['prec'])
         cweights = eta * torch.abs(self._policy_torch.cweights) + (1 - eta) * torch.abs(old_cweights)
         self._policy_torch.set_cweights_param(cweights)
 
@@ -212,7 +197,7 @@ class ProjectionMetricRL(Agent):
                     init_weight = self._policy_torch.cweights[k].clone()
                     self._policy_torch.cweights[k] = 0.
                     means = self._policy_torch.get_weighted_means(obs)
-                    if proj.mean_diff(means, old_means, old_cov_d['prec']) < self._max_kl_cdel and old_cweights[k] > 0.:
+                    if mean_diff(means, old_means, old_cov_d['prec']) < self._max_kl_cdel and old_cweights[k] > 0.:
                         nb_cluster -= 1
                         deleted_clu.append(k)
                         self._policy_torch.zero_cweight_param(k)
@@ -226,12 +211,12 @@ class ProjectionMetricRL(Agent):
             for obs_i, act_i, adv_i, intermediate_means_i, old_means_i, old_log_p_i in \
                     minibatch_generator(self._batch_size, obs, act, adv, intermediate_means, old_means, old_log_p):
 
-                if proj.mean_diff(intermediate_means_i, old_means_i,
+                if mean_diff(intermediate_means_i, old_means_i,
                                   old_cov_d['prec']) < self._max_kl - 1e-6:
                     self._p_optim.zero_grad()
                     means = self._policy_torch.get_weighted_means(obs_i)
                     chol = self._policy_torch.get_chol()
-                    proj_d = proj.lin_gauss_kl_proj(means, chol, intermediate_means_i, old_means_i,
+                    proj_d = lin_gauss_kl_proj(means, chol, intermediate_means_i, old_means_i,
                                                     old_cov_d['cov'], old_cov_d['prec'], old_cov_d['logdetcov'],
                                                     self._max_kl, e_lb)
                     proj_distrib = torch.distributions.MultivariateNormal(proj_d['means'], scale_tril=proj_d['chol'])
@@ -244,7 +229,7 @@ class ProjectionMetricRL(Agent):
     def _project_mean_and_covariance(self, obs, old_means, intermediate_means, old_cov_d, old_cmeans, e_lb):
         means = self._policy_torch.get_weighted_means(obs)
         chol = self._policy_torch.get_chol()
-        proj_d = proj.lin_gauss_kl_proj(means, chol, intermediate_means, old_means,
+        proj_d = lin_gauss_kl_proj(means, chol, intermediate_means, old_means,
                                         old_cov_d['cov'], old_cov_d['prec'], old_cov_d['logdetcov'], self._max_kl, e_lb)
         cmeans = proj_d['eta_mean'] * self._policy_torch.get_cmeans_params() + (1 - proj_d['eta_mean']) * old_cmeans
 
@@ -274,7 +259,7 @@ class ProjectionMetricRL(Agent):
         old_means = self._policy_torch.get_weighted_means(obs).detach()
         old_pol_dist = self._policy_torch.distribution(obs)
         old_log_p = self._policy_torch.log_prob(obs, act).detach()
-        old_cov_d = proj.utils_from_chol(old_chol)
+        old_cov_d = utils_from_chol(old_chol)
         e_lb = self._e_profile.get_e_lb()
 
         nb_cluster, wq, old_cweights, old_cmeans = self._add_new_clusters(obs, act, adv, wq, old_cweights, old_cmeans)
