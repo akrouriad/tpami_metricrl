@@ -37,12 +37,12 @@ class PyTorchPolicy(Policy):
 
 
 class GaussianPolicy(nn.Module):
-    def __init__(self, mean_func, a_dim, mean_mul=1.):
+    def __init__(self, mean_func, a_dim, std_0, mean_mul=1.):
         super().__init__()
         self._mean_func = mean_func
         self.a_dim = a_dim
         self._mean_mul = mean_mul
-        self.log_sigma = nn.Parameter(torch.zeros(a_dim))
+        self.log_sigma = nn.Parameter(torch.ones(a_dim)*np.log(std_0))
 
     def get_mean(self, x):
         return self._mean_func(x) * self._mean_mul

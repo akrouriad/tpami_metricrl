@@ -16,7 +16,7 @@ class MLP(nn.Module):
             self.layers.append(nn.Linear(k, kp))
         self.weights_init()
 
-    def forward(self, x):
+    def forward(self, x, **kwargs):
         if self.preproc is not None:
             x = self.preproc(x)
 
