@@ -48,7 +48,7 @@ class PPO(Agent):
                                    preproc=None,
                                    n_models=n_models_v,
                                    prediction=v_prediction_type,
-                                   quiet=False)
+                                   quiet=True)
 
         self._V = Regressor(PyTorchApproximator, **approximator_params)
 
