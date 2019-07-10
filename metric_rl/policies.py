@@ -11,7 +11,7 @@ class PyTorchPolicy(Policy):
     Mushroom interface for a generic PyTorch policy.
     A PyTorch policy is a policy implemented as a neural network using PyTorch.
     """
-    def __init__(self, network):
+    def __init__(self, network, use_cuda=False):
         """
         Constructor.
 
@@ -20,6 +20,7 @@ class PyTorchPolicy(Policy):
              log_prob interface to compute the probability of a given state action pair.
         """
         self._network = network
+        self._use_cuda = use_cuda
 
     def __call__(self, state, action):
         s = torch.tensor(state, dtype=torch.float)
@@ -31,6 +32,38 @@ class PyTorchPolicy(Policy):
         s = torch.tensor(state, dtype=torch.float)
         a = self._network(s)
         return torch.squeeze(a, dim=0).detach().numpy()
+
+    def set_weights(self, weights):
+        idx = 0
+        for p in self._network.parameters():
+            shape = p.data.shape
+
+            c = 1
+            for s in shape:
+                c *= s
+
+            w = np.reshape(weights[idx:idx+c], shape)
+
+            if not self._use_cuda:
+                w_tensor = torch.from_numpy(w).type(p.data.dtype)
+            else:
+                w_tensor = torch.from_numpy(w).type(p.data.dtype).cuda()
+
+            p.data = w_tensor
+            idx += c
+
+        assert idx == weights.size
+
+    def get_weights(self):
+        weights = list()
+
+        for p in self._network.parameters():
+            w = p.data.detach().cpu().numpy()
+            weights.append(w.flatten())
+
+        weights = np.concatenate(weights, 0)
+
+        return weights
 
     def reset(self):
         pass

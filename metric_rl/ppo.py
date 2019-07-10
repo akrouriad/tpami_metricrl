@@ -76,8 +76,8 @@ class PPO(Agent):
         old_pol_dist = self._policy_torch.distribution(obs)
         old_log_p = old_pol_dist.log_prob(act)[:, None].detach()
 
-        np_v_target, _ = get_targets(self._V, x, xn, r, absorbing, last, self.mdp_info.gamma, self._lambda)
-        self._V.fit(x, np_v_target, n_epochs=self._n_epochs_v)
+        v_target, _ = get_targets(self._V, x, xn, r, absorbing, last, self.mdp_info.gamma, self._lambda)
+        self._V.fit(x, v_target, n_epochs=self._n_epochs_v)
 
         for epoch in range(self._n_epochs_policy):
             for obs_i, act_i, adv_i, old_log_p_i in minibatch_generator(self._batch_size, obs, act, adv, old_log_p):
@@ -92,10 +92,10 @@ class PPO(Agent):
 
         # Print fit information
         logging_verr = []
-        v_targets = torch.tensor(np_v_target, dtype=torch.float)
+        torch_v_targets = torch.tensor(v_target, dtype=torch.float)
         for idx in range(len(self._V)):
             v_pred = torch.tensor(self._V(x, idx=idx), dtype=torch.float)
-            v_err = F.mse_loss(v_pred, v_targets)
+            v_err = F.mse_loss(v_pred, torch_v_targets)
             logging_verr.append(v_err.item())
 
         logging_ent = self._policy_torch.entropy()
