@@ -9,7 +9,6 @@ from mushroom.algorithms.agent import Agent
 from mushroom.approximators import Regressor
 from mushroom.approximators.parametric import PyTorchApproximator
 from mushroom.utils.dataset import parse_dataset
-from mushroom.utils.minibatches import minibatch_generator
 
 from .policies import PyTorchPolicy, GaussianPolicy
 from .rl_shared import MLP, get_targets
@@ -35,7 +34,6 @@ class TRPO(Agent):
         self._n_epochs_cg = n_epochs_cg
         self._cg_damping = cg_damping
         self._cg_residual_tol = cg_residual_tol
-        self._batch_size = batch_size
 
         self._max_kl = max_kl
         self._ent_coeff = ent_coeff
@@ -55,7 +53,7 @@ class TRPO(Agent):
                                    optimizer={'class': optim.Adam,
                                               'params': {'lr': lr_v}},
                                    loss=F.mse_loss,
-                                   batch_size=h_layer_width,
+                                   batch_size=batch_size,
                                    input_shape=input_shape,
                                    output_shape=(1,),
                                    size_list=size_list,

@@ -40,7 +40,7 @@ class PPO(Agent):
                                    optimizer={'class': optim.Adam,
                                               'params': {'lr': lr_v}},
                                    loss=F.mse_loss,
-                                   batch_size=h_layer_width,
+                                   batch_size=batch_size,
                                    input_shape=input_shape,
                                    output_shape=(1,),
                                    size_list=size_list,
