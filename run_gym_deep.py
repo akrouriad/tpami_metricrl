@@ -13,7 +13,7 @@ from metric_rl.logger import generate_log_folder, save_parameters, Logger
 
 def experiment(alg, env_id, horizon, gamma, n_epochs, n_steps, n_steps_per_fit, n_episodes_test, seed, params,
                log_name=None):
-    print('Metric RL')
+    print(alg.__name__)
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.set_num_threads(1)
@@ -89,8 +89,8 @@ if __name__ == '__main__':
                        )
 
     algs_params = [
-        (TRPO, 'trpo', trpo_params),
-        #(PPO, 'ppo', ppo_params)
+        #(TRPO, 'trpo', trpo_params),
+        (PPO, 'ppo', ppo_params)
      ]
 
     # Bipedal Walker
