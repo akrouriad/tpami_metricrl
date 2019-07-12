@@ -195,7 +195,7 @@ class TRPO(Agent):
         logging_ent = self._policy_torch.entropy()
         new_pol_dist = self._policy_torch.distribution(obs)
         logging_kl = torch.mean(torch.distributions.kl.kl_divergence(new_pol_dist, old_pol_dist))
-        avg_rwd = avg_rwd = np.mean(compute_J(dataset))
+        avg_rwd = np.mean(compute_J(dataset))
         tqdm.write("Iterations Results:\n\trewards {} vf_loss {}\n\tentropy {}  kl {}".format(
             avg_rwd, logging_verr, logging_ent, logging_kl))
         tqdm.write('--------------------------------------------------------------------------------------------------')
