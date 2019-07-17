@@ -16,8 +16,9 @@ class PyTorchPolicy(Policy):
         Constructor.
 
         Args:
-            network (Regressor): the PyTorch policy. Must provide the forward interface to sample actions and the
-             log_prob interface to compute the probability of a given state action pair.
+            network (nn.Module): the PyTorch policy. Must provide the forward interface
+               to sample actions and the log_prob interface to compute the probability
+               of a given state action pair.
         """
         self._network = network
         self._use_cuda = use_cuda
