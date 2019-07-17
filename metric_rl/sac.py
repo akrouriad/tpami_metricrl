@@ -46,8 +46,11 @@ class SACGaussianPolicy(Policy):
         self._approximator = approximator
         self._use_cuda = use_cuda
 
-    def __call__(self, state, action, use_log=False):
-        raise NotImplementedError
+    def __call__(self, state, action, use_log=True):
+        if use_log:
+            return self._approximator.predict(state, action)
+        else:
+            return np.exp(self._approximator.predict(state, action))
 
     def draw_action(self, state):
         mu, sigma = self._approximator.predict(state)
@@ -138,6 +141,13 @@ class SAC(Agent):
                                                         self._critic_approximator.model[0].network,
                                                         self._alpha)
 
+        if 'n_fit_targets' in actor_params.keys():
+            assert actor_params['n_fit_targets'] == 2
+        else:
+            actor_params['n_fit_targets'] = 2
+
+        assert actor_params['output_shape'][0] == 2*mdp_info.action_space.shape[0]
+
         self._actor_approximator = Regressor(PyTorchApproximator,
                                              **actor_params)
         policy = SACGaussianPolicy(self._actor_approximator)
@@ -154,8 +164,10 @@ class SAC(Agent):
 
             if self._replay_memory.size() > self._warmup_transitions:
                 eps = np.random.randn(action.shape)
-                self._actor_approximator.fit(state, eps, state)
-                log_prob = self._actor_approximator.predict(state, eps)
+                self._actor_approximator.fit(state, eps, state, compute_log_p=True)
+                log_prob = self._actor_approximator.predict(state, eps,
+                                                            compute_log_p=True,
+                                                            compute_dist=False)
                 self._update_alpha(log_prob)
 
             q_next = self._next_q(next_state, absorbing)
