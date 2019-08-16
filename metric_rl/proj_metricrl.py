@@ -7,7 +7,7 @@ import torch.nn.functional as F
 
 from mushroom.algorithms.agent import Agent
 from mushroom.approximators import Regressor
-from mushroom.approximators.parametric import PyTorchApproximator
+from mushroom.approximators.parametric import TorchApproximator
 from mushroom.utils.dataset import parse_dataset
 from mushroom.utils.minibatches import minibatch_generator
 
@@ -77,7 +77,7 @@ class ProjectionMetricRL(Agent):
                                    prediction=v_prediction_type,
                                    quiet=False)
 
-        self._V = Regressor(PyTorchApproximator, **approximator_params)
+        self._V = Regressor(TorchApproximator, **approximator_params)
 
         self._iter = 1
 
