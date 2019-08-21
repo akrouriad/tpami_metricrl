@@ -3,6 +3,24 @@ import torch.nn as nn
 import numpy as np
 
 
+class TwoPhaseEntropProfile:
+    def __init__(self, policy, e_reduc, e_thresh):
+        self.init_entropy = policy.entropy()
+        self._policy = policy
+        self._e_reduc = e_reduc
+        self._e_thresh = e_thresh
+        self._phase = 1
+        self._iter = 0
+
+    def get_e_lb(self):
+        if self._phase == 1 and self._policy.entropy() > self._e_thresh:
+            return -10000.
+        else:
+            self._phase = 2
+            self._iter += 1
+            return self._e_thresh - self._iter * self._e_reduc
+
+
 class MLP(nn.Module):
     def __init__(self, input_shape, output_shape, size_list, activation_list=None, preproc=None, **kwargs):
         super().__init__()

@@ -6,7 +6,7 @@ from mushroom.core import Core
 from mushroom.environments import Gym
 from mushroom.utils.dataset import compute_J
 
-from metric_rl.proj_metricrl import ProjectionMetricRL
+from metric_rl.proj_metricrl_old import ProjectionMetricRLOld
 from metric_rl.logger import generate_log_folder, save_parameters, Logger
 
 
@@ -24,7 +24,7 @@ def experiment(env_id, horizon, gamma, n_epochs, n_steps, n_steps_per_fit, n_epi
     # Set environment seed
     mdp.env.seed(seed)
 
-    agent = ProjectionMetricRL(mdp.info, **params)
+    agent = ProjectionMetricRLOld(mdp.info, **params)
 
     core = Core(agent, mdp)
 
