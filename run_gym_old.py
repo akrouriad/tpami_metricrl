@@ -1,7 +1,4 @@
 import torch
-import torch.optim as optim
-import torch.nn.functional as F
-
 import numpy as np
 from tqdm import tqdm, trange
 
@@ -9,9 +6,8 @@ from mushroom.core import Core
 from mushroom.environments import Gym
 from mushroom.utils.dataset import compute_J
 
-from metric_rl.proj_metricrl import ProjectionMetricRL
+from metric_rl.proj_metricrl_old import ProjectionMetricRLOld
 from metric_rl.logger import generate_log_folder, save_parameters, Logger
-from metric_rl.rl_shared import TwoPhaseEntropProfile, MLP
 
 
 def experiment(env_id, horizon, gamma, n_epochs, n_steps, n_steps_per_fit, n_episodes_test, seed, params,
@@ -28,13 +24,7 @@ def experiment(env_id, horizon, gamma, n_epochs, n_steps, n_steps_per_fit, n_epi
     # Set environment seed
     mdp.env.seed(seed)
 
-    # Set critic params (add input shape)
-    input_shape = mdp.info.observation_space.shape
-    critic_params = dict(input_shape=input_shape,
-                         **params['critic_params'])
-    params['critic_params'] = critic_params
-
-    agent = ProjectionMetricRL(mdp.info, **params)
+    agent = ProjectionMetricRLOld(mdp.info, **params)
 
     core = Core(agent, mdp)
 
@@ -48,13 +38,13 @@ def experiment(env_id, horizon, gamma, n_epochs, n_steps, n_steps_per_fit, n_epi
 
         J = np.mean(compute_J(dataset, mdp.info.gamma))
         R = np.mean(compute_J(dataset))
-        E = agent.policy.entropy()
+        E = agent._policy_torch.entropy()
 
         J_list.append(J)
         R_list.append(R)
         E_list.append(E)
 
-        logger.save(network=agent.policy._regressor, J=J_list, R=R_list, E=E_list)
+        logger.save(network=agent._policy_torch, J=J_list, R=R_list, E=E_list)
 
         tqdm.write('END OF EPOCH ' + str(it))
         tqdm.write('J: {}, R: {}, entropy: {}'.format(J, R, E))
@@ -65,48 +55,31 @@ def experiment(env_id, horizon, gamma, n_epochs, n_steps, n_steps_per_fit, n_epi
     core.evaluate(n_episodes=5, render=True)
 
 
-def get_parameters(n_clusters):
-
-    policy_params = dict(n_clusters=n_clusters,
-                         std_0=1.0)
-
-    actor_optimizer = {'class': optim.Adam,
-                       'params': {'lr': .001}}
-    e_profile = {'class': TwoPhaseEntropProfile,
-                 'params': {'e_reduc': .015}}
-
-    critic_params = dict(network=MLP,
-                         optimizer={'class': optim.Adam,
-                                    'params': {'lr': 3e-4}},
-                         loss=F.mse_loss,
-                         batch_size=64,
-                         output_shape=(1,),
-                         size_list=[64, 64],
-                         n_models=2,
-                         prediction='min',
-                         quiet=False)
-
-    critic_fit_params = dict(n_epochs=10)
-
-    params = dict(policy_params=policy_params,
-                  critic_params=critic_params,
-                  actor_optimizer=actor_optimizer,
-                  n_epochs_per_fit=20,
-                  batch_size=64,
-                  entropy_profile=e_profile,
-                  max_kl=.015,
-                  lam=1.,
-                  critic_fit_params=critic_fit_params)
-
-    return params
-
-
 if __name__ == '__main__':
-    n_clusters = 5
-    params = get_parameters(n_clusters)
+
+    max_kl = .015
+    n_max_clusters = 5
+
+    params = dict(std_0=1.0,
+                  lr_v=3e-4,
+                  lr_p=1e-3,
+                  lr_cw=1e-1,
+                  max_kl=max_kl,
+                  max_kl_cw=max_kl / 2.,
+                  max_kl_cdel=2 * max_kl / 3.,
+                  e_reduc=.015,
+                  n_epochs_v=10,
+                  n_models_v=2,
+                  v_prediction_type='min',
+                  lam=0.95,
+                  n_epochs_clus=20,
+                  n_epochs_params=20,
+                  batch_size=64,
+                  n_max_clusters=n_max_clusters
+                  )
 
     # Bipedal Walker
-    log_name = generate_log_folder('bipedal_walker', 'projection', str(n_clusters), True)
+    log_name = generate_log_folder('bipedal_walker', 'projection', str(n_max_clusters), True)
     save_parameters(log_name, params)
     experiment(env_id='BipedalWalker-v2', horizon=1600, gamma=.99, n_epochs=100, n_steps=30000, n_steps_per_fit=3000,
                n_episodes_test=10, seed=0, params=params, log_name=log_name)
