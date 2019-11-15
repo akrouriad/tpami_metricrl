@@ -106,7 +106,6 @@ if __name__ == '__main__':
     trpo_alg_params = dict(ent_coeff=0.0,
                            max_kl=.001,
                            lam=1.,
-                           n_epochs_v=3,
                            n_epochs_line_search=10,
                            n_epochs_cg=10,
                            cg_damping=1e-2,
