@@ -56,8 +56,8 @@ class ProjectionMetricRLOld(Agent):
                                    activation_list=None,
                                    preproc=None,
                                    n_models=n_models_v,
-                                   prediction=v_prediction_type,
                                    quiet=False)
+        self._prediction_type = v_prediction_type
 
         self._V = Regressor(TorchApproximator, **approximator_params)
 
@@ -176,7 +176,8 @@ class ProjectionMetricRLOld(Agent):
 
         obs = torch.tensor(x, dtype=torch.float)
         act = torch.tensor(u, dtype=torch.float)
-        np_adv = get_adv(self._V, x, xn, r, absorbing, last, self.mdp_info.gamma, self._lambda)
+        np_adv = get_adv(self._V, x, xn, r, absorbing, last, self.mdp_info.gamma, self._lambda,
+                         prediction=self._prediction_type)
         np_adv = (np_adv - np.mean(np_adv)) / (np.std(np_adv) + 1e-8)
         adv = torch.tensor(np_adv, dtype=torch.float)
 
@@ -192,7 +193,8 @@ class ProjectionMetricRLOld(Agent):
 
         nb_cluster, wq, old_cweights, old_cmeans = self._add_new_clusters(obs, act, adv, wq, old_cweights, old_cmeans)
 
-        np_v_target, _ = get_targets(self._V, x, xn, r, absorbing, last, self.mdp_info.gamma, self._lambda)
+        np_v_target, _ = get_targets(self._V, x, xn, r, absorbing, last, self.mdp_info.gamma, self._lambda,
+                                     prediction=self._prediction_type)
         self._V.fit(x, np_v_target, n_epochs=self._n_epochs_v)
 
         self._update_cluster_weights(obs, act, wq, old_means, old_log_p, adv, old_cov_d, old_cweights)

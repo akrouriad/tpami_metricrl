@@ -83,7 +83,6 @@ def get_parameters(n_clusters):
                          output_shape=(1,),
                          size_list=[64, 64],
                          n_models=2,
-                         prediction='min',
                          quiet=False)
 
     critic_fit_params = dict(n_epochs=10)
