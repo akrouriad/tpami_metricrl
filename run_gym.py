@@ -42,9 +42,9 @@ def experiment(env_id, horizon, gamma, n_epochs, n_steps, n_steps_per_fit, n_epi
     R_list = list()
     E_list = list()
 
-    for it in trange(n_epochs):
-        core.learn(n_steps=n_steps, n_steps_per_fit=n_steps_per_fit)
-        dataset = core.evaluate(n_episodes=n_episodes_test, render=False)
+    for it in range(n_epochs):
+        core.learn(n_steps=n_steps, n_steps_per_fit=n_steps_per_fit, quiet=True)
+        dataset = core.evaluate(n_episodes=n_episodes_test, render=False, quiet=True)
 
         J = np.mean(compute_J(dataset, mdp.info.gamma))
         R = np.mean(compute_J(dataset))
@@ -58,6 +58,7 @@ def experiment(env_id, horizon, gamma, n_epochs, n_steps, n_steps_per_fit, n_epi
 
         tqdm.write('END OF EPOCH ' + str(it))
         tqdm.write('J: {}, R: {}, entropy: {}'.format(J, R, E))
+        tqdm.write('cweights {}'.format(agent.policy._regressor._c_weights))
         tqdm.write('##################################################################################################')
 
     print('Press a button to visualize')
@@ -71,7 +72,9 @@ def get_parameters(n_clusters):
                          std_0=1.0)
 
     actor_optimizer = {'class': optim.Adam,
-                       'params': {'lr': .001}}
+                       'cw_params': {'lr': .1},
+                       'means_params': {'lr': .001},
+                       'log_sigma_params': {'lr': .001}}
     e_profile = {'class': TwoPhaseEntropProfile,
                  'params': {'e_reduc': .015}}
 
@@ -84,19 +87,20 @@ def get_parameters(n_clusters):
                          size_list=[64, 64],
                          n_models=2,
                          prediction='min',
-                         quiet=False)
+                         quiet=True)
 
     critic_fit_params = dict(n_epochs=10)
 
     params = dict(policy_params=policy_params,
                   critic_params=critic_params,
                   actor_optimizer=actor_optimizer,
-                  n_epochs_per_fit=20,
+                  n_epochs_per_fit=10,
                   batch_size=64,
                   entropy_profile=e_profile,
                   max_kl=.015,
                   lam=1.,
-                  critic_fit_params=critic_fit_params)
+                  critic_fit_params=critic_fit_params,
+                  del_x_iter=3)
 
     return params
 
@@ -108,7 +112,7 @@ if __name__ == '__main__':
     # Bipedal Walker
     log_name = generate_log_folder('bipedal_walker', 'projection', str(n_clusters), True)
     save_parameters(log_name, params)
-    experiment(env_id='BipedalWalker-v2', horizon=1600, gamma=.99, n_epochs=100, n_steps=30000, n_steps_per_fit=3000,
+    experiment(env_id='BipedalWalker-v2', horizon=1600, gamma=.99, n_epochs=1000, n_steps=3000, n_steps_per_fit=3000,
                n_episodes_test=10, seed=0, params=params, log_name=log_name)
 
 

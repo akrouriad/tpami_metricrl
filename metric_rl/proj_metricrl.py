@@ -13,7 +13,7 @@ from mushroom.utils.torch import to_float_tensor
 from mushroom.utils.minibatches import minibatch_generator
 
 from .cluster_weight_proj import cweight_mean_proj
-from .gaussian_proj import lin_gauss_kl_proj, utils_from_chol
+from .gaussian_proj import lin_gauss_kl_proj, utils_from_chol, mean_diff
 from .rl_shared import get_targets
 
 
@@ -50,6 +50,8 @@ class MetricRegressor(nn.Module):
     def forward(self, s):
         if self._cluster_count < self._n_clusters:
             self.centers[self._cluster_count] = s
+            if self._cluster_count == 0:
+                self._c_weights.data[0] = 1
             self._cluster_count += 1
 
         return self.get_mean(s), self.get_chol()
@@ -157,7 +159,7 @@ class MetricPolicy(TorchPolicy):
 class ProjectionMetricRL(Agent):
     def __init__(self, mdp_info, policy_params, critic_params,
                  actor_optimizer, n_epochs_per_fit, batch_size,
-                 entropy_profile, max_kl, lam, critic_fit_params=None):
+                 entropy_profile, max_kl, lam, critic_fit_params=None, del_x_iter=5):
         self._critic_fit_params = dict() if critic_fit_params is None else critic_fit_params
 
         policy = MetricPolicy(mdp_info.observation_space.shape,
@@ -166,7 +168,9 @@ class ProjectionMetricRL(Agent):
 
         self._use_cuda = policy_params['use_cuda'] if 'use_cuda' in policy_params else False
 
-        self._optimizer = actor_optimizer['class'](policy.parameters(), **actor_optimizer['params'])
+        self._actor_optimizers = [actor_optimizer['class']([policy._regressor._c_weights], **actor_optimizer['cw_params']),
+                                  actor_optimizer['class']([policy._regressor.means], **actor_optimizer['means_params']),
+                                  actor_optimizer['class']([policy._regressor._log_sigma], **actor_optimizer['log_sigma_params'])]
 
         self._n_epochs_per_fit = n_epochs_per_fit
         self._batch_size = batch_size
@@ -178,6 +182,8 @@ class ProjectionMetricRL(Agent):
         self._max_kl = max_kl
         self._lambda = lam
 
+        self._iter = 0
+        self._del_x_iter = del_x_iter
         super().__init__(policy, mdp_info)
 
     def fit(self, dataset):
@@ -198,33 +204,65 @@ class ProjectionMetricRL(Agent):
         # Critic Update
         self._critic.fit(x, v, **self._critic_fit_params)
 
-        # Update cluster centers
-        self._update_cluster_centers(obs)
-
         # Save old data
         old_chol = self.policy.get_chol_t().detach()
         entropy_lb = self._e_profile.get_e_lb()
 
         old = dict(w=self.policy.get_unormalized_membership_t(obs).detach(),
                    cweights=self.policy.get_cweights_t().detach(),
-                   cmeans=self.policy.get_cmeans_t().detach(),
+                   cmeans=self.policy.get_cmeans_t().clone().detach(),
                    means=self.policy.get_mean_t(obs).detach(),
                    pol_dist=self.policy.distribution_t(obs),
-                   log_p=self.policy.log_prob_t(obs, act).detach(),
+                   log_p=self.policy.log_prob_t(obs, act).clone().detach(),
                    **utils_from_chol(old_chol))
+
+        # add cluster centers
+        self._add_cluster_centers(obs, act, adv_t)
 
         # Actor Update
         self._update_parameters(obs, act, adv_t, old, entropy_lb)
         self._full_batch_projection(obs, old, entropy_lb)
 
-    def _update_cluster_centers(self, obs):
-        pass
+        if (self._iter + 0) % self._del_x_iter == 0:
+            # delete cluster centers
+            self._delete_cluster_centers(obs, old)
+
+        # next iter
+        self._iter += 1
+
+    def _add_cluster_centers(self, obs, act, adv_t):
+        # adding clusters
+        sadv, oadv = torch.sort(adv_t, dim=0)
+        ba_ind = 0
+        for k, cw in enumerate(self.policy._regressor._c_weights):
+            if cw == 0.:
+                ba = oadv[ba_ind][0]
+                self.policy._regressor.centers[k] = obs[ba]
+                self.policy._regressor.means.data[k] = act[ba]
+                ba_ind += 1
+        tqdm.write('added {} clusters'.format(ba_ind))
+
+    def _delete_cluster_centers(self, obs, old):
+        # deleting clusters
+        avgm, order = torch.sort(torch.mean(self.policy.get_membership_t(obs), dim=0))
+        nb_del = 0
+        for k in order:
+            # trying to delete cluster k
+            init_weight = self.policy._regressor._c_weights[k].clone()
+            self.policy._regressor._c_weights.data[k] = to_float_tensor(0., self._use_cuda)
+            means = self.policy.get_mean_t(obs)
+            if mean_diff(means, old['means'], old['prec']) > self._max_kl:
+                self.policy._regressor._c_weights.data[k] = init_weight
+            else:
+                nb_del += 1
+        tqdm.write('deleted {} clusters'.format(nb_del))
 
     def _update_parameters(self, obs, act, adv_t, old, entropy_lb):
         for epoch in range(self._n_epochs_per_fit):
             for obs_i, act_i, wq_i, old_means_i, old_log_p_i, adv_i in \
                     minibatch_generator(self._batch_size, obs, act, old['w'], old['means'], old['log_p'], adv_t):
-                self._optimizer.zero_grad()
+                for opt in self._actor_optimizers:
+                    opt.zero_grad()
 
                 # Get Basics stuff
                 w = self.policy.get_unormalized_membership_t(obs_i)
@@ -236,7 +274,7 @@ class ProjectionMetricRL(Agent):
                 cweights_eta = eta * self.policy.get_cweights_t() + (1 - eta) * old['cweights']
 
                 # Compute mean projection (nu)
-                intermediate_means_i = self.policy.get_intermediate_mean_t(obs_i, old['cmeans'], cweights_eta)
+                intermediate_means_i = self.policy.get_intermediate_mean_t(obs_i, old['cmeans'], cweights_eta).detach()
 
                 proj_d = lin_gauss_kl_proj(means_i, chol, intermediate_means_i, old_means_i,
                                            old['cov'], old['prec'], old['logdetcov'],
@@ -247,6 +285,9 @@ class ProjectionMetricRL(Agent):
                 prob_ratio = torch.exp(proj_distrib.log_prob(act_i)[:, None] - old_log_p_i)
                 loss = -torch.mean(prob_ratio * adv_i)
                 loss.backward()
+
+                for opt in self._actor_optimizers:
+                    opt.step()
 
     def _full_batch_projection(self, obs, old, entropy_lb):
         # Get Basics stuff
