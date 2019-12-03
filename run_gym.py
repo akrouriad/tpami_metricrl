@@ -94,11 +94,11 @@ def get_parameters(n_clusters):
     params = dict(policy_params=policy_params,
                   critic_params=critic_params,
                   actor_optimizer=actor_optimizer,
-                  n_epochs_per_fit=10,
+                  n_epochs_per_fit=20,
                   batch_size=64,
                   entropy_profile=e_profile,
                   max_kl=.015,
-                  lam=1.,
+                  lam=.95,
                   critic_fit_params=critic_fit_params,
                   del_x_iter=3)
 
