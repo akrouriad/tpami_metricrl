@@ -54,9 +54,9 @@ class MLP(nn.Module):
             nn.init.zeros_(self.layers[k].bias)
 
 
-def get_targets(v_func, x, x_n, rwd, absorbing, last, discount, lam):
-    v = v_func(x)
-    v_next = v_func(x_n)
+def get_targets(v_func, x, x_n, rwd, absorbing, last, discount, lam, **predict_params):
+    v = v_func(x, **predict_params)
+    v_next = v_func(x_n, **predict_params)
     gen_adv = np.empty_like(v)
     for rev_k, _ in enumerate(reversed(v)):
         k = len(v) - rev_k - 1
@@ -69,6 +69,6 @@ def get_targets(v_func, x, x_n, rwd, absorbing, last, discount, lam):
     return gen_adv + v, gen_adv
 
 
-def get_adv(v_func, x, xn,  rwd, absorbing, last, discount, lam):
-    _, adv = get_targets(v_func, x, xn, rwd, absorbing, last, discount, lam)
+def get_adv(v_func, x, xn,  rwd, absorbing, last, discount, lam, **predict_params):
+    _, adv = get_targets(v_func, x, xn, rwd, absorbing, last, discount, lam, **predict_params)
     return adv

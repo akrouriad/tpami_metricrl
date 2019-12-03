@@ -197,7 +197,8 @@ class ProjectionMetricRL(Agent):
         # Get tensors
         obs = to_float_tensor(x, self._use_cuda)
         act = to_float_tensor(u,  self._use_cuda)
-        v, adv = get_targets(self._critic, x, xn, r, absorbing, last, self.mdp_info.gamma, self._lambda)
+        v, adv = get_targets(self._critic, x, xn, r, absorbing, last, self.mdp_info.gamma, self._lambda,
+                             prediction='min')
         adv = (adv - np.mean(adv)) / (np.std(adv) + 1e-8)
         adv_t = to_float_tensor(adv, self._use_cuda)
 
