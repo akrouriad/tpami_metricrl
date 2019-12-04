@@ -10,12 +10,12 @@ from mushroom.environments import Gym
 from mushroom.utils.dataset import compute_J
 
 from metric_rl.proj_metricrl import ProjectionMetricRL
+from metric_rl.proj_swap_metricrl import ProjectionSwapMetricRL
 from metric_rl.logger import generate_log_folder, save_parameters, Logger
 from metric_rl.rl_shared import TwoPhaseEntropProfile, MLP
 
-
 def experiment(env_id, horizon, gamma, n_epochs, n_steps, n_steps_per_fit, n_episodes_test, seed, params,
-               log_name=None):
+               log_name=None, swap=True):
     print('Metric RL')
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -34,7 +34,10 @@ def experiment(env_id, horizon, gamma, n_epochs, n_steps, n_steps_per_fit, n_epi
                          **params['critic_params'])
     params['critic_params'] = critic_params
 
-    agent = ProjectionMetricRL(mdp.info, **params)
+    if swap:
+        agent = ProjectionSwapMetricRL(mdp.info, **params)
+    else:
+        agent = ProjectionMetricRL(mdp.info, **params)
 
     core = Core(agent, mdp)
 
@@ -99,8 +102,7 @@ def get_parameters(n_clusters):
                   entropy_profile=e_profile,
                   max_kl=.015,
                   lam=.95,
-                  critic_fit_params=critic_fit_params,
-                  del_x_iter=3)
+                  critic_fit_params=critic_fit_params)
 
     return params
 
@@ -113,7 +115,7 @@ if __name__ == '__main__':
     log_name = generate_log_folder('bipedal_walker', 'projection', str(n_clusters), True)
     save_parameters(log_name, params)
     experiment(env_id='BipedalWalker-v2', horizon=1600, gamma=.99, n_epochs=1000, n_steps=3000, n_steps_per_fit=3000,
-               n_episodes_test=10, seed=0, params=params, log_name=log_name)
+               n_episodes_test=10, seed=0, params=params, log_name=log_name, swap=True)
 
 
     # Hopper Bullet
