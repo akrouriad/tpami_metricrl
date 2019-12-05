@@ -269,7 +269,7 @@ class ProjectionMetricRL(Agent):
 
                 # Get Basics stuff
                 w = self.policy.get_unormalized_membership_t(obs_i)
-                means_i = self.policy.get_mean_t(obs_i)
+                means_i = self.policy.get_intermediate_mean_t(obs_i, old['cmeas'])
                 chol = self.policy.get_chol_t()
 
                 # Compute cluster weights projection (eta)
@@ -277,7 +277,8 @@ class ProjectionMetricRL(Agent):
                 cweights_eta = eta * self.policy.get_cweights_t() + (1 - eta) * old['cweights']
 
                 # Compute mean projection (nu)
-                intermediate_means_i = self.policy.get_intermediate_mean_t(obs_i, old['cmeans'], cweights_eta).detach()
+                intermediate_means_i = self.policy.get_intermediate_mean_t(obs_i, old['cmeans'], cweights_eta)
+                means_i = self.policy.get_mean_t(obs_i)
 
                 proj_d = lin_gauss_kl_proj(means_i, chol, intermediate_means_i, old_means_i,
                                            old['cov'], old['prec'], old['logdetcov'],
