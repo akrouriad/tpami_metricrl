@@ -14,12 +14,13 @@ from .cluster_weight_proj import cweight_mean_proj
 from .gaussian_proj import lin_gauss_kl_proj, utils_from_chol, mean_diff
 from .rl_shared import get_targets
 from .proj_metricrl import MetricPolicy
+from .cluster_randomized_optimization import randomized_swap_optimization
 
 
 class ProjectionSwapMetricRL(Agent):
     def __init__(self, mdp_info, policy_params, critic_params,
                  actor_optimizer, n_epochs_per_fit, batch_size,
-                 entropy_profile, max_kl, lam, critic_fit_params=None):
+                 entropy_profile, max_kl, lam, n_samples=10, critic_fit_params=None):
         self._critic_fit_params = dict() if critic_fit_params is None else critic_fit_params
 
         policy = MetricPolicy(mdp_info.observation_space.shape,
@@ -41,6 +42,9 @@ class ProjectionSwapMetricRL(Agent):
                                                    **entropy_profile['params'])
         self._max_kl = max_kl
         self._lambda = lam
+
+        self._n_swaps = float(policy.n_clusters)
+        self._n_samples = n_samples
 
         self._iter = 0
         super().__init__(policy, mdp_info)
@@ -86,7 +90,8 @@ class ProjectionSwapMetricRL(Agent):
 
         # swap clusters and optimize mean and cov
         else:
-            self._swap_clusters(obs, act, adv_t, old)
+            #self._swap_clusters(obs, act, adv_t, old)
+            self._random_swap_clusters(obs, old)
             self._update_mean_n_cov(obs, act, adv_t, old, entropy_lb)
 
         # Actor Update
@@ -176,6 +181,54 @@ class ProjectionSwapMetricRL(Agent):
         new_pol_dist = self.policy.distribution_t(obs)
         logging_kl = torch.mean(torch.distributions.kl.kl_divergence(new_pol_dist, old['pol_dist']))
         print('Nb swapped clusters: {}. KL: {}'.format(self.policy._regressor._n_clusters - len(remaining_idx), logging_kl))
+
+    def _random_swap_clusters(self, obs, old):
+        candidates = obs.detach().numpy()
+        c_0 = self.policy.get_cluster_centers()
+
+        w = self.policy.get_membership_t(obs)
+
+        cluster_h = torch.sum(w, dim=0)
+        cluster_h = cluster_h.detach().numpy().squeeze()
+
+        sample_h = torch.sum(w, dim=1)
+        sample_h = sample_h.detach().numpy().squeeze()
+
+        def bound_function(c_i):
+            c_old = self.policy.get_cluster_centers()
+            self.policy.set_cluster_centers(c_i)
+            kl_swap = mean_diff(self.policy.get_mean_t(obs), old['means'], old['prec'])
+            self.policy.set_cluster_centers(c_old)
+            return kl_swap < self._max_kl
+
+        def evaluation_function(c_i):
+            c_old = self.policy.get_cluster_centers()
+            self.policy.set_cluster_centers(c_i)
+            w = self.policy.get_membership_t(obs)
+            self.policy.set_cluster_centers(c_old)
+            return torch.sum(w).item()
+
+        swapped = False
+        for i in range(5):
+            c_best = randomized_swap_optimization(c_0, candidates, cluster_h, sample_h,
+                                                  bound_function, evaluation_function,
+                                                  int(np.ceil(self._n_swaps)), self._n_samples)
+
+            if np.array_equal(c_best, c_0):
+                self._n_swaps /= 2
+            else:
+                swapped = True
+                break
+
+        if swapped:
+            self.policy.set_cluster_centers(c_best)
+
+            new_pol_dist = self.policy.distribution_t(obs)
+            logging_kl = torch.mean(torch.distributions.kl.kl_divergence(new_pol_dist, old['pol_dist']))
+            print('Nb swapped clusters: {}. KL: {}'.format(int(np.ceil(self._n_swaps)), logging_kl))
+
+            self._n_swaps *= 1.5
+            self._n_swaps = np.minimum(self._n_swaps, self.policy.n_clusters)
 
     def _update_all_parameters(self, obs, act, adv_t, old, entropy_lb):
         for epoch in range(self._n_epochs_per_fit):

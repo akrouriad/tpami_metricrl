@@ -90,6 +90,10 @@ class MetricRegressor(nn.Module):
         dist = torch.sum((s[:, None, :] - self.centers[None, :, :]) ** 2, dim=-1)
         return torch.exp(-torch.exp(self._log_temp) * dist)
 
+    @property
+    def n_clusters(self):
+        return len(self.centers)
+
 
 class MetricPolicy(TorchPolicy):
     def __init__(self, input_shape, output_shape, n_clusters, std_0, use_cuda=False):
@@ -154,6 +158,16 @@ class MetricPolicy(TorchPolicy):
 
     def get_membership_t(self, s):
         return self._regressor.get_membership(s)
+
+    def get_cluster_centers(self):
+        return self._regressor.centers.detach().numpy()
+
+    def set_cluster_centers(self, centers):
+        self._regressor.centers.data = to_float_tensor(centers, self._use_cuda)
+
+    @property
+    def n_clusters(self):
+        return self._regressor.n_clusters
 
 
 class ProjectionMetricRL(Agent):

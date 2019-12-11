@@ -6,6 +6,9 @@ class Sampler(object):
         self._w = w
 
     def sample(self, n):
+        if n == len(self._w):
+            return np.arange(len(self._w))
+
         return np.random.choice(len(self._w), n, replace=False, p=self._w)
 
     @staticmethod
@@ -33,18 +36,29 @@ class LogarithmicSampling(Sampler):
         super().__init__(w)
 
 
-class BoltzmannSampler(object):
+class BoltzmannSampler(Sampler):
     def __init__(self, h, beta):
         h = h - h.max()
         w = np.exp(h * beta)
         w /= np.sum(w)
 
         self._w = w
+        print('w: ', w)
+        print('min w: ', w.min(), 'max w', w.max())
+
 
 
 def randomized_swap_optimization(c_0, candidates, cluster_h, sample_h,
                                  bound_function, evaluation_function,
                                  n_swaps, n_samples):
+
+    print('---')
+    print('Running random swapping routine')
+    print('n_clusters: ', len(cluster_h), ', n_candidates: ', len(sample_h))
+    print('n_swaps: ', n_swaps, ', n_samples: ', n_samples)
+    print('cluster_h', cluster_h)
+    print('sample_h', sample_h)
+    print('---')
 
     cluster_index_sampler_data = dict(sampling_class=BoltzmannSampler,
                                       params=dict(beta=1.0))
@@ -53,9 +67,9 @@ def randomized_swap_optimization(c_0, candidates, cluster_h, sample_h,
                                        params=dict(beta=1.0))
 
     cluster_index_sampler = \
-        cluster_index_sampler_data['sampling_function'](cluster_h, **cluster_index_sampler_data['params'])
+        cluster_index_sampler_data['sampling_class'](cluster_h, **cluster_index_sampler_data['params'])
     cluster_center_sampler = \
-        cluster_center_sampler_data['sampling_function'](sample_h, **cluster_center_sampler_data['params'])
+        cluster_center_sampler_data['sampling_class'](sample_h, **cluster_center_sampler_data['params'])
 
     max_v = evaluation_function(c_0)
     c_best = c_0
