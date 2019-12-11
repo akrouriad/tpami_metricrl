@@ -25,7 +25,7 @@ class PolynomialSampling(Sampler):
         rank = Sampler.get_rank(h)
         w = np.array([1.0/(1.0+i)**exponent for i in rank])
 
-        super().__init__(w)
+        super().__init__(w/np.sum(w))
 
 
 class LogarithmicSampling(Sampler):
@@ -33,7 +33,7 @@ class LogarithmicSampling(Sampler):
         rank = Sampler.get_rank(h)
         w = np.array([1.0 / (1.0 + np.log(i + 1.0)) for i in rank])
 
-        super().__init__(w)
+        super().__init__(w/np.sum(w))
 
 
 class BoltzmannSampler(Sampler):
@@ -60,11 +60,10 @@ def randomized_swap_optimization(c_0, candidates, cluster_h, sample_h,
     print('sample_h', sample_h)
     print('---')
 
-    cluster_index_sampler_data = dict(sampling_class=BoltzmannSampler,
-                                      params=dict(beta=1.0))
+    #cluster_index_sampler_data = dict(sampling_class=BoltzmannSampler, params=dict(beta=1.0))
+    cluster_index_sampler_data = dict(sampling_class=PolynomialSampling, params=dict(exponent=1))
 
-    cluster_center_sampler_data = dict(sampling_class=BoltzmannSampler,
-                                       params=dict(beta=1.0))
+    cluster_center_sampler_data = dict(sampling_class=BoltzmannSampler, params=dict(beta=1.0))
 
     cluster_index_sampler = \
         cluster_index_sampler_data['sampling_class'](cluster_h, **cluster_index_sampler_data['params'])
