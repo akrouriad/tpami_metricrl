@@ -2,10 +2,8 @@ import numpy as np
 from tqdm import tqdm
 
 import torch
-import torch.nn as nn
 
 from mushroom.algorithms.agent import Agent
-from mushroom.policy import TorchPolicy
 from mushroom.approximators import Regressor
 from mushroom.approximators.parametric import TorchApproximator
 from mushroom.utils.dataset import parse_dataset
