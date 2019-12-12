@@ -216,6 +216,9 @@ class ProjectionSwapMetricRL(Agent):
 
             if np.array_equal(c_best, c_0):
                 self._n_swaps /= 2
+                if self._n_swaps < 1.0:
+                    self._n_swaps = 1.0
+                    break
             else:
                 swapped = True
                 break
@@ -227,8 +230,10 @@ class ProjectionSwapMetricRL(Agent):
             logging_kl = torch.mean(torch.distributions.kl.kl_divergence(new_pol_dist, old['pol_dist']))
             print('Nb swapped clusters: {}. KL: {}'.format(int(np.ceil(self._n_swaps)), logging_kl))
 
-            self._n_swaps *= 1.5
+            self._n_swaps *= 1.25
             self._n_swaps = np.minimum(self._n_swaps, self.policy.n_clusters)
+        else:
+            print('Nb swapped clusters: 0. KL: 0.0')
 
     def _update_all_parameters(self, obs, act, adv_t, old, entropy_lb):
         for epoch in range(self._n_epochs_per_fit):

@@ -43,8 +43,8 @@ class BoltzmannSampler(Sampler):
         w /= np.sum(w)
 
         self._w = w
-        print('w: ', w)
-        print('min w: ', w.min(), 'max w', w.max())
+        # print('w: ', w)
+        # print('min w: ', w.min(), 'max w', w.max())
 
 
 
@@ -56,8 +56,8 @@ def randomized_swap_optimization(c_0, candidates, cluster_h, sample_h,
     print('Running random swapping routine')
     print('n_clusters: ', len(cluster_h), ', n_candidates: ', len(sample_h))
     print('n_swaps: ', n_swaps, ', n_samples: ', n_samples)
-    print('cluster_h', cluster_h)
-    print('sample_h', sample_h)
+    # print('cluster_h', cluster_h)
+    # print('sample_h', sample_h)
     print('---')
 
     #cluster_index_sampler_data = dict(sampling_class=BoltzmannSampler, params=dict(beta=1.0))

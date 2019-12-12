@@ -112,10 +112,14 @@ if __name__ == '__main__':
     params = get_parameters(n_clusters)
 
     # Bipedal Walker
-    log_name = generate_log_folder('bipedal_walker', 'projection', str(n_clusters), True)
+    env_id = 'BipedalWalker-v2'
+    horizon = 1600
+    gamma = .99
+
+    log_name = generate_log_folder(env_id, 'projection', str(n_clusters), True)
     save_parameters(log_name, params)
-    experiment(env_id='BipedalWalker-v2', horizon=1600, gamma=.99, n_epochs=1000, n_steps=3000, n_steps_per_fit=3000,
-               n_episodes_test=10, seed=0, params=params, log_name=log_name, swap=True)
+    experiment(env_id=env_id, horizon=horizon, gamma=gamma, n_epochs=1000, n_steps=3000, n_steps_per_fit=3000,
+               n_episodes_test=25, seed=0, params=params, log_name=log_name, swap=True)
 
 
     # Hopper Bullet
