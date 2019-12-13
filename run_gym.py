@@ -13,6 +13,8 @@ from metric_rl.proj_metricrl import ProjectionMetricRL
 from metric_rl.proj_swap_metricrl import ProjectionSwapMetricRL
 from metric_rl.logger import generate_log_folder, save_parameters, Logger
 from metric_rl.rl_shared import TwoPhaseEntropProfile, MLP
+from joblib import Parallel, delayed
+
 
 def experiment(env_id, horizon, gamma, n_epochs, n_steps, n_steps_per_fit, n_episodes_test, seed, params,
                log_name=None, swap=True):
@@ -57,16 +59,16 @@ def experiment(env_id, horizon, gamma, n_epochs, n_steps, n_steps_per_fit, n_epi
         R_list.append(R)
         E_list.append(E)
 
-        logger.save(network=agent.policy._regressor, J=J_list, R=R_list, E=E_list)
+        logger.save(network=agent.policy._regressor, J=J_list, R=R_list, E=E_list, seed=seed)
 
         tqdm.write('END OF EPOCH ' + str(it))
         tqdm.write('J: {}, R: {}, entropy: {}'.format(J, R, E))
         tqdm.write('cweights {}'.format(agent.policy._regressor._c_weights))
         tqdm.write('##################################################################################################')
 
-    print('Press a button to visualize')
-    input()
-    core.evaluate(n_episodes=5, render=True)
+    # print('Press a button to visualize')
+    # input()
+    # core.evaluate(n_episodes=5, render=True)
 
 
 def get_parameters(n_clusters):
@@ -108,18 +110,22 @@ def get_parameters(n_clusters):
 
 
 if __name__ == '__main__':
+    n_experiments = 11
+    n_jobs = n_experiments
+
     n_clusters = 5
     params = get_parameters(n_clusters)
 
     # Bipedal Walker
     env_id = 'BipedalWalker-v2'
+    # env_id = 'HopperBulletEnv-v0'
     horizon = 1600
     gamma = .99
 
-    log_name = generate_log_folder(env_id, 'projection', str(n_clusters), True)
+    log_name = generate_log_folder(env_id, 'projection_del', str(n_clusters), True)
     save_parameters(log_name, params)
-    experiment(env_id=env_id, horizon=horizon, gamma=gamma, n_epochs=1000, n_steps=3000, n_steps_per_fit=3000,
-               n_episodes_test=25, seed=0, params=params, log_name=log_name, swap=True)
+    Parallel(n_jobs=n_jobs)(delayed(experiment)(env_id=env_id, horizon=horizon, gamma=gamma, n_epochs=1000, n_steps=3000, n_steps_per_fit=3000,
+               n_episodes_test=25, seed=seed, params=params, log_name=log_name, swap=False) for seed in range(n_experiments))
 
 
     # Hopper Bullet

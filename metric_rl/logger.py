@@ -41,20 +41,26 @@ class Logger:
         self._sub_directory = os.path.join(directory, subdir) if directory is not None else None
         self._iter_n = 0
 
-    def save(self, network=None, **kwargs):
+    def save(self, network=None, seed=None, **kwargs):
         if self._directory is not None:
             if network is not None:
-                self.save_network(network, self._iter_n)
+                self.save_network(network, self._iter_n, seed)
 
             for name, array in kwargs.items():
-                self.save_numpy(name, array)
+                self.save_numpy(name, array, seed)
             self._iter_n += 1
 
-    def save_network(self, network, n_it):
-        filename = 'network-' + str(n_it) + '.pth'
+    def save_network(self, network, n_it, seed=None):
+        filename = 'network-'
+        if seed:
+            filename += str(seed) + '-'
+        filename += str(n_it) + '.pth'
         file_path = os.path.join(self._sub_directory, filename)
         torch.save(network, file_path)
 
-    def save_numpy(self, name, array):
+    def save_numpy(self, name, array, seed=None):
+
+        if seed:
+            name += '-' + str(seed)
         file_path = os.path.join(self._directory, name)
         np.save(file_path, array)

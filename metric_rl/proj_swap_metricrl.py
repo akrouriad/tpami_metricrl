@@ -20,7 +20,7 @@ from .cluster_randomized_optimization import randomized_swap_optimization
 class ProjectionSwapMetricRL(Agent):
     def __init__(self, mdp_info, policy_params, critic_params,
                  actor_optimizer, n_epochs_per_fit, batch_size,
-                 entropy_profile, max_kl, lam, n_samples=10, critic_fit_params=None):
+                 entropy_profile, max_kl, lam, n_samples=1000, critic_fit_params=None):
         self._critic_fit_params = dict() if critic_fit_params is None else critic_fit_params
 
         policy = MetricPolicy(mdp_info.observation_space.shape,
@@ -82,6 +82,7 @@ class ProjectionSwapMetricRL(Agent):
                    means=self.policy.get_mean_t(obs).detach(),
                    pol_dist=self.policy.distribution_t(obs),
                    log_p=self.policy.log_prob_t(obs, act).clone().detach(),
+                   membership=self.policy.get_membership_t(obs).detach(),
                    **utils_from_chol(old_chol))
 
         # optimize cw, mean and cov
@@ -90,7 +91,8 @@ class ProjectionSwapMetricRL(Agent):
 
         # swap clusters and optimize mean and cov
         else:
-            #self._swap_clusters(obs, act, adv_t, old)
+            # self._swap_clusters_adv(obs, act, adv_t, old)
+            # self._swap_clusters_covr(obs, act, old)
             self._random_swap_clusters(obs, old)
             self._update_mean_n_cov(obs, act, adv_t, old, entropy_lb)
 
@@ -99,6 +101,11 @@ class ProjectionSwapMetricRL(Agent):
 
         # next iter
         self._iter += 1
+
+        # logging
+        logging_kl = torch.mean(torch.distributions.kl.kl_divergence(self.policy.distribution_t(obs), old['pol_dist']))
+        mean_covr = torch.mean(torch.sum(self.policy.get_membership_t(obs), dim=1))
+        tqdm.write('KL {} Covr {}'.format(logging_kl, mean_covr))
 
     def _add_cluster_centers(self, obs, act, adv_t):
         # adding clusters
@@ -140,7 +147,7 @@ class ProjectionSwapMetricRL(Agent):
                     for opt in self._actor_optimizers[1:]:
                         opt.step()
 
-    def _swap_clusters(self, obs, act, adv_t, old):
+    def _swap_clusters_adv(self, obs, act, adv_t, old):
         base_perf = torch.mean(torch.exp(old['pol_dist'].log_prob(act)[:, None] - old['log_p']) * adv_t)  # almost zero
 
         high_adv_idxs = torch.argsort(adv_t, dim=0, descending=True)
@@ -167,6 +174,45 @@ class ProjectionSwapMetricRL(Agent):
                     if new_perf >= base_perf:
                     # if True:
                         # keep if kl under thresh and objective did not decrease
+                        remaining_idx.pop(closest_idx)
+                        state_centers = np.delete(state_centers, closest_idx, axis=0)
+                        break
+                    else:
+                        # revert old cluster center
+                        self.policy._regressor.centers[closest] = state_backup
+                else:
+                    # revert old cluster center
+                    self.policy._regressor.centers[closest] = state_backup
+            if len(remaining_idx) == 0:
+                break
+        new_pol_dist = self.policy.distribution_t(obs)
+        logging_kl = torch.mean(torch.distributions.kl.kl_divergence(new_pol_dist, old['pol_dist']))
+        print('Nb swapped clusters: {}. KL: {}'.format(self.policy._regressor._n_clusters - len(remaining_idx), logging_kl))
+
+    def _swap_clusters_covr(self, obs, act, old):
+        base_perf = torch.mean(old['membership'])
+        print('init covr', base_perf)
+
+        high_heur_idxs = torch.argsort(torch.sum(old['membership'], dim=1), dim=0, descending=True)
+        remaining_idx = [k for k in range(self.policy._regressor._n_clusters)]
+        state_centers = self.policy._regressor.centers.clone().numpy()
+        for idxidx, idx in enumerate(high_heur_idxs):
+            # finding closest state
+            dist_to_centers = -np.sum((state_centers - obs[idx].detach().numpy()) ** 2, axis=1)
+            closest_idxs = np.argsort(dist_to_centers)
+            for closest_idx in closest_idxs:
+                closest = remaining_idx[closest_idx]
+                state_backup = self.policy._regressor.centers[closest].clone()
+                # swap and check KL
+                self.policy._regressor.centers[closest] = obs[idx]
+                kl_swap = mean_diff(self.policy.get_mean_t(obs), old['means'], old['prec'])
+                if kl_swap < self._max_kl:
+                    # check increase of the objective after state swapping
+                    # ... and cluster center swapping?
+                    new_perf = torch.mean(self.policy.get_membership_t(obs))
+                    if new_perf >= base_perf:
+                        # keep if kl under thresh and objective did not decrease
+                        base_perf = new_perf
                         remaining_idx.pop(closest_idx)
                         state_centers = np.delete(state_centers, closest_idx, axis=0)
                         break
@@ -209,7 +255,7 @@ class ProjectionSwapMetricRL(Agent):
             return torch.sum(w).item()
 
         swapped = False
-        for i in range(5):
+        while True:
             c_best = randomized_swap_optimization(c_0, candidates, cluster_h, sample_h,
                                                   bound_function, evaluation_function,
                                                   int(np.ceil(self._n_swaps)), self._n_samples)
@@ -230,7 +276,7 @@ class ProjectionSwapMetricRL(Agent):
             logging_kl = torch.mean(torch.distributions.kl.kl_divergence(new_pol_dist, old['pol_dist']))
             print('Nb swapped clusters: {}. KL: {}'.format(int(np.ceil(self._n_swaps)), logging_kl))
 
-            self._n_swaps *= 1.25
+            self._n_swaps *= 1.8
             self._n_swaps = np.minimum(self._n_swaps, self.policy.n_clusters)
         else:
             print('Nb swapped clusters: 0. KL: 0.0')

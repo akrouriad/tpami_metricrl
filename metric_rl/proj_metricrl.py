@@ -283,7 +283,7 @@ class ProjectionMetricRL(Agent):
 
                 # Get Basics stuff
                 w = self.policy.get_unormalized_membership_t(obs_i)
-                means_i = self.policy.get_intermediate_mean_t(obs_i, old['cmeas'])
+                means_i = self.policy.get_intermediate_mean_t(obs_i, old['cmeans'])
                 chol = self.policy.get_chol_t()
 
                 # Compute cluster weights projection (eta)
@@ -310,7 +310,7 @@ class ProjectionMetricRL(Agent):
     def _full_batch_projection(self, obs, old, entropy_lb):
         # Get Basics stuff
         w = self.policy.get_unormalized_membership_t(obs)
-        means = self.policy.get_mean_t(obs)
+        means = self.policy.get_intermediate_mean_t(obs, old['cmeans'])
         chol = self.policy.get_chol_t()
 
         # Compute cluster weights projection (eta)
