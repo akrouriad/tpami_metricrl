@@ -245,6 +245,11 @@ class ProjectionMetricRL(Agent):
         # next iter
         self._iter += 1
 
+        # logging
+        logging_kl = torch.mean(torch.distributions.kl.kl_divergence(self.policy.distribution_t(obs), old['pol_dist']))
+        mean_covr = torch.mean(torch.sum(self.policy.get_membership_t(obs), dim=1))
+        tqdm.write('KL {} Covr {}'.format(logging_kl, mean_covr))
+
     def _add_cluster_centers(self, obs, act, adv_t):
         # adding clusters
         sadv, oadv = torch.sort(adv_t, dim=0)
@@ -320,6 +325,7 @@ class ProjectionMetricRL(Agent):
 
         # Compute mean projection (nu)
         intermediate_means = self.policy.get_intermediate_mean_t(obs, old['cmeans'])
+        means = self.policy.get_mean_t(obs)
 
         proj_d = lin_gauss_kl_proj(means, chol, intermediate_means, old['means'],
                                    old['cov'], old['prec'], old['logdetcov'], self._max_kl, entropy_lb)

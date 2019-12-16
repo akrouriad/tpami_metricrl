@@ -15,6 +15,7 @@ from metric_rl.logger import generate_log_folder, save_parameters, Logger
 from metric_rl.rl_shared import TwoPhaseEntropProfile, MLP
 from joblib import Parallel, delayed
 
+from multiprocessing import Process
 
 def experiment(env_id, horizon, gamma, n_epochs, n_steps, n_steps_per_fit, n_episodes_test, seed, params,
                log_name=None, swap=True):
@@ -118,18 +119,28 @@ if __name__ == '__main__':
 
     # Bipedal Walker
     env_id = 'BipedalWalker-v2'
-    # env_id = 'HopperBulletEnv-v0'
     horizon = 1600
+    # env_id = 'HopperBulletEnv-v0'
+    # horizon = 1000
     gamma = .99
 
-    log_name = generate_log_folder(env_id, 'projection_del', str(n_clusters), True)
+    log_name = generate_log_folder(env_id, 'projection_delf', str(n_clusters), True)
     save_parameters(log_name, params)
     Parallel(n_jobs=n_jobs)(delayed(experiment)(env_id=env_id, horizon=horizon, gamma=gamma, n_epochs=1000, n_steps=3000, n_steps_per_fit=3000,
                n_episodes_test=25, seed=seed, params=params, log_name=log_name, swap=False) for seed in range(n_experiments))
 
+    # ps = []
+    # for k in range(n_experiments):
+    #     p = Process(target=experiment, kwargs={'env_id': env_id, 'horizon': horizon, 'gamma': gamma, 'n_epochs': 1000, 'n_steps': 3000,
+    #                                            'n_steps_per_fit': 3000, 'n_episodes_test': 25, 'seed': k, 'params': params, 'log_name': log_name, 'swap': True})
+    #     p.start()
+    #     ps.append(p)
+    #
+    # for p in ps:
+    #     p.join()
 
     # Hopper Bullet
     # log_name = generate_log_folder('hopper_bullet', 'projection', str(n_max_clusters), True)
     # save_parameters(log_name, params)
     # experiment(env_id='HopperBulletEnv-v0', horizon=1000, gamma=.99, n_epochs=100, n_steps=30000, n_steps_per_fit=3000,
-    #            n_episodes_test=10, seed=0, params=params, log_name=log_name)
+    #            n_episodes_test=10, seed=0, params=params, log_name=log_name, swap=True)
