@@ -75,12 +75,13 @@ def randomized_swap_optimization(c_0, candidates, cluster_h, sample_h,
 
     for i in range(n_samples):
         c_i = c_0.copy()
-        for cluster_index, candidate_index in zip(cluster_index_sampler.sample(n_swaps),
-                                                  cluster_center_sampler.sample(n_swaps)):
+        cluster_indexes = cluster_index_sampler.sample(n_swaps)
+        candidate_indexes = cluster_center_sampler.sample(n_swaps)
+        for cluster_index, candidate_index in zip(cluster_indexes, candidate_indexes):
             c_i[cluster_index] = candidates[candidate_index]
 
         if bound_function(c_i):
-            v = evaluation_function(c_i)
+            v = evaluation_function(c_i, cluster_indexes, candidate_indexes)
             if v > max_v:
                 max_v = v
                 c_best = c_i

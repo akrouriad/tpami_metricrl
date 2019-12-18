@@ -198,6 +198,7 @@ class ProjectionMetricRL(Agent):
 
         self._iter = 0
         self._del_x_iter = del_x_iter
+        print('_del_x', self._del_x_iter)
         super().__init__(policy, mdp_info)
 
     def fit(self, dataset):
@@ -235,12 +236,14 @@ class ProjectionMetricRL(Agent):
                    **utils_from_chol(old_chol))
 
         # delete cluster centers
+        nb_del = 0
         if self._iter % self._del_x_iter == 0 and self._iter > 0:
-            self._delete_cluster_centers(obs, old)
+            nb_del = self._delete_cluster_centers(obs, old)
 
         # Actor Update
-        self._update_parameters(obs, act, adv_t, old, entropy_lb)
-        self._full_batch_projection(obs, old, entropy_lb)
+        if nb_del == 0:
+            self._update_parameters(obs, act, adv_t, old, entropy_lb)
+            self._full_batch_projection(obs, old, entropy_lb)
 
         # next iter
         self._iter += 1
@@ -273,11 +276,12 @@ class ProjectionMetricRL(Agent):
                 self.policy._regressor._c_weights.data[k] = to_float_tensor(0., self._use_cuda)
                 self.policy._regressor.means.data[k] = torch.zeros_like(self.policy._regressor.means[k])
                 means = self.policy.get_mean_t(obs)
-                if mean_diff(means, old['means'], old['prec']) > self._max_kl:
+                if mean_diff(means, old['means'], old['prec']) > 2 * self._max_kl / 3:
                     self.policy._regressor._c_weights.data[k] = init_weight
                 else:
                     nb_del += 1
         tqdm.write('deleted {} clusters'.format(nb_del))
+        return nb_del
 
     def _update_parameters(self, obs, act, adv_t, old, entropy_lb):
         for epoch in range(self._n_epochs_per_fit):
