@@ -13,7 +13,7 @@ from mushroom.utils.minibatches import minibatch_generator
 from .cluster_weight_proj import cweight_mean_proj
 from .gaussian_proj import lin_gauss_kl_proj, utils_from_chol, mean_diff
 from .rl_shared import get_targets
-from .proj_metricrl import MetricPolicy
+from .policies import MetricPolicy
 from .cluster_randomized_optimization import randomized_swap_optimization
 
 

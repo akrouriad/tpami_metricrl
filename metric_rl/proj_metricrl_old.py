@@ -12,7 +12,7 @@ from mushroom.utils.dataset import parse_dataset
 from mushroom.utils.minibatches import minibatch_generator
 
 from .cluster_weight_proj import cweight_mean_proj
-from .policies import PyTorchPolicy, MetricPolicy
+from .old_policies import PyTorchPolicy, MetricPolicy
 from .gaussian_proj import mean_diff, lin_gauss_kl_proj, utils_from_chol
 from .rl_shared import MLP, get_targets, get_adv, TwoPhaseEntropProfile
 

@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import numpy as np
 
 
@@ -52,6 +53,16 @@ class MLP(nn.Module):
             else:
                 nn.init.xavier_uniform_(self.layers[k].weight)
             nn.init.zeros_(self.layers[k].bias)
+
+
+class CriticMLP(MLP):
+    def __init__(self, input_shape, output_shape, size_list, activation_list=None, preproc=None, **kwargs):
+        super().__init__(input_shape, output_shape, size_list, activation_list, preproc, **kwargs)
+
+    def forward(self, state, action):
+        state_action = torch.cat((state.float(), action.float()), dim=1)
+
+        return torch.squeeze(super().forward(state_action))
 
 
 def get_targets(v_func, x, x_n, rwd, absorbing, last, discount, lam, **predict_params):

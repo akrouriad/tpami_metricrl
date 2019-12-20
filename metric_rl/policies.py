@@ -1,74 +1,9 @@
-import numpy as np
-
 import torch
 import torch.nn as nn
+import numpy as np
 
-from mushroom.policy import Policy
-
-
-class PyTorchPolicy(Policy):
-    """
-    Mushroom interface for a generic PyTorch policy.
-    A PyTorch policy is a policy implemented as a neural network using PyTorch.
-    """
-    def __init__(self, network, use_cuda=False):
-        """
-        Constructor.
-
-        Args:
-            network (nn.Module): the PyTorch policy. Must provide the forward interface
-               to sample actions and the log_prob interface to compute the probability
-               of a given state action pair.
-        """
-        self._network = network
-        self._use_cuda = use_cuda
-
-    def __call__(self, state, action):
-        s = torch.tensor(state, dtype=torch.float)
-        a = torch.tensor(action, dtype=torch.float)
-
-        return np.exp(self._network.log_prob(s, a).item())
-
-    def draw_action(self, state):
-        s = torch.tensor(state, dtype=torch.float)
-        a = self._network(s)
-        return torch.squeeze(a, dim=0).detach().numpy()
-
-    def set_weights(self, weights):
-        idx = 0
-        for p in self._network.parameters():
-            shape = p.data.shape
-
-            c = 1
-            for s in shape:
-                c *= s
-
-            w = np.reshape(weights[idx:idx+c], shape)
-
-            if not self._use_cuda:
-                w_tensor = torch.from_numpy(w).type(p.data.dtype)
-            else:
-                w_tensor = torch.from_numpy(w).type(p.data.dtype).cuda()
-
-            p.data = w_tensor
-            idx += c
-
-        assert idx == weights.size
-
-    def get_weights(self):
-        weights = list()
-
-        for p in self._network.parameters():
-            w = p.data.detach().cpu().numpy()
-            weights.append(w.flatten())
-
-        weights = np.concatenate(weights, 0)
-
-        return weights
-
-    def reset(self):
-        pass
-
+from mushroom.policy import TorchPolicy
+from mushroom.utils.torch import to_float_tensor
 
 
 class Grad1Abs(torch.autograd.Function):
@@ -85,130 +20,140 @@ class Grad1Abs(torch.autograd.Function):
         return grad_input
 
 
-class MetricPolicy(nn.Module):
-    def __init__(self, a_dim, std_0=1.0, hard_clustering=False, hardning_fnc=None):
+class MetricRegressor(nn.Module):
+    def __init__(self, input_shape, output_shape, n_clusters, std_0, **kwargs):
         super().__init__()
-        self.a_dim = a_dim
-        self.centers = None
-        self.hard_clustering = hard_clustering
-        self.hardning_fnc = hardning_fnc
-        # self.rootweights_list = nn.ParameterList().append(nn.Parameter(torch.tensor([0.])))
-        self.cweights_list = nn.ParameterList().append(nn.Parameter(torch.tensor([1.])))
-        self.means_list = nn.ParameterList().append(nn.Parameter(torch.zeros(1, a_dim)))
-        self.active_cluster_list = [0]
-        self.logsigs = nn.Parameter(torch.ones(a_dim)*np.log(std_0))
-        # self.logtemp = torch.tensor(0.7936915159225464)
-        # self.mud = torch.tensor(1.1713083982467651)
-        self.logtemp = torch.tensor(0.)
-        # self.mud = torch.tensor(1.17)
-        # self.logtemp = nn.Parameter(torch.tensor(0.))
-        # self.mud = nn.Parameter(torch.tensor(1.))
-        self.cweights = self.means = None
-        self.update_clustering()
 
-    def update_clustering(self):
-        # to speed up computation
-        # self.cweights = torch.cat([*self.cweights_list.parameters()])
-        # self.means = torch.cat([*self.means_list.parameters()])
-        self.cweights = torch.cat([self.cweights_list[k] for k in self.active_cluster_list])
-        self.means = torch.cat([self.means_list[k] for k in self.active_cluster_list])
+        s_dim = input_shape[0]
+        a_dim = output_shape[0]
+        self.centers = torch.zeros(n_clusters, s_dim)
+        self.means = nn.Parameter(torch.zeros(n_clusters, a_dim))
+        self._c_weights = nn.Parameter(torch.zeros(n_clusters))
+        self._log_sigma = nn.Parameter(torch.ones(a_dim) * np.log(std_0))
+
+        self._log_temp = torch.tensor(0.)
+
+        self._cluster_count = 0
+        self._n_clusters = n_clusters
 
     def forward(self, s):
-        with torch.no_grad():
-            # set init state as first center
-            if self.centers is None:
-                self.centers = s.clone().detach()[None, :]
+        if self._cluster_count < self._n_clusters:
+            self.centers[self._cluster_count] = s
+            if self._cluster_count == 0:
+                self._c_weights.data[0] = 1
+            self._cluster_count += 1
 
-            return self.distribution(s).sample()
+        return self.get_mean(s), self.get_chol()
 
-    def log_prob(self, s, a):
-        return self.distribution(s).log_prob(a)[:, None]
-
-    def membership(self, s):
-        if self.hard_clustering:
-            if self.hardning_fnc is None:
-                w = self.unormalized_membership(s)
-                return self.harden(w)
-            else:
-                return self.hardning_fnc(self.exp_dist(s), self.get_cweights())
-        else:
-            w = self.unormalized_membership(s)
-            return w / (torch.sum(w, dim=-1, keepdim=True) + 1) #!
-
-    def exp_dist(self, s):
-        # compute distances to cluster
-        dist = torch.sum((s[:, None, :] - self.centers[None, :, :]) ** 2, dim=-1)
-        # w = (self.rootweights ** 2) * torch.exp(-torch.exp(self.logtemp) * dist) + 1e-6
-        # w = (torch.abs(self.rootweights) + (self.rootweights == 0.).float() * self.rootweights) * torch.exp(-torch.exp(self.logtemp) * dist) + 1e-6
-        return torch.exp(-torch.exp(self.logtemp) * dist)
-        # w = Grad1Abs.apply(self.cweights) * torch.sigmoid(-torch.exp(self.logtemp) * (dist - self.mud))
-        # w = torch.exp(-torch.exp(self.logtemp) * dist + self.rootweights)
-
-    def get_cweights(self):
-        return Grad1Abs.apply(self.cweights)
-        # return torch.exp(self.cweights)
-        # return torch.abs(self.cweights)
-
-    def unormalized_membership(self, s):
-        return self.get_cweights() * self.exp_dist(s)
-
-    def harden(self, w):
-        max_values = w.argmax(dim=1, keepdim=True)
-        return torch.zeros(w.size()).scatter_(dim=1, index=max_values, value=1.)
-
-    def distribution(self, s):
-        means = self.get_weighted_means(s)
-        return torch.distributions.MultivariateNormal(means, scale_tril=self.get_chol())
-
-    def get_weighted_means(self, s):
+    def get_mean(self, s):
         if len(s.size()) == 1:
             s = s[None, :]
-        w = self.membership(s)
-
-        # compute weighted means
-        return w.matmul(self.get_cmeans_params())
+        w = self.get_membership(s)
+        return w.matmul(self.means)
 
     def get_chol(self):
-        return torch.diag(torch.exp(self.logsigs))
+        return torch.diag(torch.exp(self._log_sigma))
 
-    def entropy(self):
-        return self.a_dim / 2 * np.log(2 * np.pi * np.e) + torch.sum(self.logsigs).detach().numpy()
+    def set_chol(self, chol):
+        log_sigma = torch.log(torch.diag(chol))
+        self._log_sigma.data = log_sigma
 
-    def add_cluster(self, s, a):
-        self.active_cluster_list.append(len(self.cweights_list))
-        self.centers = torch.cat([self.centers, s])
-        self.means_list.append(nn.Parameter(a))
-        # self.cweights_list.append(nn.Parameter(torch.tensor([1e-16])))
-        self.cweights_list.append(nn.Parameter(torch.tensor([0.])))
-        # self.cweights_list.append(nn.Parameter(torch.tensor([-5.])))
-        self.update_clustering()
+    def get_c_weights(self):
+        return Grad1Abs.apply(self._c_weights)
 
-    def delete_clusters(self, cluster_idx):
-        if cluster_idx:
-            self.active_cluster_list = [self.active_cluster_list[k] for k in range(len(self.active_cluster_list)) if k not in cluster_idx]
-            self.centers = torch.cat([self.centers[[k]] for k in range(self.centers.size()[0]) if k not in cluster_idx])
-            self.update_clustering()
+    def set_c_weights(self, c_weights):
+        self._c_weights.data = c_weights
 
-    def zero_cweight_param(self, idx):
-        self.cweights_list[self.active_cluster_list[idx]].data = torch.tensor([0.])
-        self.update_clustering()
+    def get_unormalized_membership(self, s, cweights=None):
+        cweights = self.get_c_weights() if cweights is None else cweights
+        return cweights * self._cluster_distance(s)
 
-    def set_cweights_param(self, vals):
-        for k, val in enumerate(vals):
-            self.cweights_list[self.active_cluster_list[k]].data = val.unsqueeze(0)
-        self.update_clustering()
+    def get_membership(self, s, cweights=None):
+        cweights = self.get_c_weights() if cweights is None else cweights
+        w = self.get_unormalized_membership(s, cweights)
+        # We add 1 to weights norm to consider also the default cluster
+        w_norm = torch.sum(w, dim=-1, keepdim=True) + 1
+        return w / w_norm
 
-    @ staticmethod
-    def arctanh(x):
-        val = 0.5 * torch.log((1 + x) / (1 - x))
-        return val
+    def _cluster_distance(self, s):
+        dist = torch.sum((s[:, None, :] - self.centers[None, :, :]) ** 2, dim=-1)
+        return torch.exp(-torch.exp(self._log_temp) * dist)
 
-    def set_cmeans_param(self, cmeans):
-        for k, cm in enumerate(cmeans):
-            # self.means_list[self.active_cluster_list[k]].data = MetricPolicy.arctanh(cm.unsqueeze(0))
-            self.means_list[self.active_cluster_list[k]].data = cm.unsqueeze(0)
-        self.update_clustering()
+    @property
+    def n_clusters(self):
+        return len(self.centers)
 
-    def get_cmeans_params(self):
-        # return torch.tanh(self.means)
-        return self.means
+
+class MetricPolicy(TorchPolicy):
+    def __init__(self, input_shape, output_shape, n_clusters, std_0, use_cuda=False):
+        self._a_dim = output_shape[0]
+        self._regressor = MetricRegressor(input_shape, output_shape, n_clusters, std_0)
+
+        super().__init__(use_cuda)
+
+        if self._use_cuda:
+            self._regressor.cuda()
+
+    def draw_action_t(self, state):
+        return self.distribution_t(state).sample()
+
+    def log_prob_t(self, state, action):
+        return self.distribution_t(state).log_prob(action)[:, None]
+
+    def entropy_t(self, state):
+        log_sigma = self._regressor._log_sigma
+        return self._a_dim / 2 * np.log(2 * np.pi * np.e) + torch.sum(log_sigma)
+
+    def distribution_t(self, state):
+        mu, chol_sigma = self._regressor(state)
+        return torch.distributions.MultivariateNormal(mu, scale_tril=chol_sigma)
+
+    def get_weights(self):
+        raise NotImplementedError
+
+    def set_weights(self, weights):
+        raise NotImplementedError
+
+    def parameters(self):
+        return self._regressor.parameters()
+
+    def get_mean_t(self, s):
+        return self._regressor.get_mean(s)
+
+    def get_intermediate_mean_t(self, s, cmeans, cweights=None):
+        new_membership = self._regressor.get_membership(s, cweights)
+        return new_membership.matmul(cmeans)
+
+    def get_chol_t(self):
+        return self._regressor.get_chol()
+
+    def set_chol_t(self, chol):
+        self._regressor.set_chol(chol)
+
+    def get_cweights_t(self):
+        return self._regressor.get_c_weights()
+
+    def set_cweights_t(self, cweights):
+        self._regressor.set_c_weights(cweights)
+
+    def get_cmeans_t(self):
+        return self._regressor.means
+
+    def set_cmeans_t(self, means):
+        self._regressor.means.data = means
+
+    def get_unormalized_membership_t(self, s):
+        return self._regressor.get_unormalized_membership(s)
+
+    def get_membership_t(self, s):
+        return self._regressor.get_membership(s)
+
+    def get_cluster_centers(self):
+        return self._regressor.centers.detach().numpy()
+
+    def set_cluster_centers(self, centers):
+        self._regressor.centers.data = to_float_tensor(centers, self._use_cuda)
+
+    @property
+    def n_clusters(self):
+        return self._regressor.n_clusters
