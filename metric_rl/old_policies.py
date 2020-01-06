@@ -3,7 +3,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from mushroom.policy import Policy
+from mushroom_rl.policy import Policy
 
 
 class PyTorchPolicy(Policy):

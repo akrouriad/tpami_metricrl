@@ -3,11 +3,11 @@ import numpy as np
 from tqdm import tqdm
 from copy import deepcopy
 
-from mushroom.algorithms.agent import Agent
-from mushroom.approximators import Regressor
-from mushroom.approximators.parametric import TorchApproximator
-from mushroom.utils.replay_memory import ReplayMemory
-from mushroom.utils.torch import to_float_tensor
+from mushroom_rl.algorithms.agent import Agent
+from mushroom_rl.approximators import Regressor
+from mushroom_rl.approximators.parametric import TorchApproximator
+from mushroom_rl.utils.replay_memory import ReplayMemory
+from mushroom_rl.utils.torch import to_float_tensor
 
 from .cluster_weight_proj import cweight_mean_proj
 from .gaussian_proj import lin_gauss_kl_proj, utils_from_chol, mean_diff
@@ -19,7 +19,8 @@ class ProjectionSwapRTMetricRL(Agent):
     def __init__(self, mdp_info, policy_params, critic_params,
                  actor_optimizer, n_epochs_per_fit, batch_size,
                  initial_replay_size, max_replay_size, tau,
-                 entropy_profile, max_kl, lam, n_samples=1000, no_swap_iteration=1000, critic_fit_params=None):
+                 entropy_profile, max_kl, lam, n_samples=1000,
+                 no_swap_iteration=1000, critic_fit_params=None):
         self._critic_fit_params = dict() if critic_fit_params is None else critic_fit_params
 
         policy = MetricPolicy(mdp_info.observation_space.shape,
@@ -58,7 +59,11 @@ class ProjectionSwapRTMetricRL(Agent):
 
 
         self._iter = 0
-        super().__init__(policy, mdp_info)
+
+        self._min_action = torch.Tensor(mdp_info.action_space.low)
+        self._max_action = torch.Tensor(mdp_info.action_space.high)
+
+        super().__init__(mdp_info, policy)
 
     def fit(self, dataset):
         self._replay_memory.add(dataset)
@@ -74,8 +79,9 @@ class ProjectionSwapRTMetricRL(Agent):
             self._critic.fit(state, action, q, **self._critic_fit_params)
 
     def _loss(self, state, action_new):
-        q_0 = self._critic(state, action_new, output_tensor=True, idx=0)
-        q_1 = self._critic(state, action_new, output_tensor=True, idx=1)
+        action_new_clamped = self._clamp_torch(action_new)
+        q_0 = self._critic(state, action_new_clamped, output_tensor=True, idx=0)
+        q_1 = self._critic(state, action_new_clamped, output_tensor=True, idx=1)
 
         q = torch.min(q_0, q_1)
 
@@ -84,7 +90,10 @@ class ProjectionSwapRTMetricRL(Agent):
     def _next_q(self, next_state, absorbing):
         a = self.policy.draw_action(next_state)
 
-        q = self._target_critic.predict(next_state, a, prediction='min')
+        a_clamped = self._clamp(a)
+
+        q = self._target_critic.predict(next_state, a_clamped,
+                                        prediction='min')
         q *= 1 - absorbing
 
         return q
@@ -267,3 +276,10 @@ class ProjectionSwapRTMetricRL(Agent):
             critic_weights_i = self._tau * self._critic.model[i].get_weights()
             critic_weights_i += (1 - self._tau) * self._target_critic.model[i].get_weights()
             self._target_critic.model[i].set_weights(critic_weights_i)
+
+    def _clamp(self, a):
+        return np.maximum(self.mdp_info.action_space.low, np.minimum(
+            self.mdp_info.action_space.high, a))
+
+    def _clamp_torch(self, a):
+        return torch.max(self._min_action, torch.min(self._max_action, a))

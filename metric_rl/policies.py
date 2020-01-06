@@ -2,8 +2,8 @@ import torch
 import torch.nn as nn
 import numpy as np
 
-from mushroom.policy import TorchPolicy
-from mushroom.utils.torch import to_float_tensor
+from mushroom_rl.policy import TorchPolicy
+from mushroom_rl.utils.torch import to_float_tensor
 
 
 class Grad1Abs(torch.autograd.Function):
