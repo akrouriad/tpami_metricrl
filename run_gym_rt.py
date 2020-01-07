@@ -5,9 +5,9 @@ import torch.nn.functional as F
 import numpy as np
 from tqdm import tqdm
 
-from mushroom.core import Core
-from mushroom.environments import Gym
-from mushroom.utils.dataset import compute_J
+from mushroom_rl.core import Core
+from mushroom_rl.environments import Gym
+from mushroom_rl.utils.dataset import compute_J
 
 from metric_rl.proj_swap_rt_metricrl import ProjectionSwapRTMetricRL
 from metric_rl.logger import generate_log_folder, save_parameters, Logger
@@ -101,7 +101,7 @@ def get_parameters(n_clusters):
                   n_epochs_per_fit=10,
                   batch_size=64,
                   entropy_profile=e_profile,
-                  max_kl=.015,
+                  max_kl=1.5e-5,#.015,
                   lam=.95,
                   critic_fit_params=critic_fit_params)
 
@@ -109,7 +109,7 @@ def get_parameters(n_clusters):
 
 
 if __name__ == '__main__':
-    n_experiments = 11
+    n_experiments = 1
     n_jobs = n_experiments
 
     n_clusters = 5

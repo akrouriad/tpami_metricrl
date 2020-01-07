@@ -5,11 +5,11 @@ import torch
 import torch.optim as optim
 import torch.nn.functional as F
 
-from mushroom.algorithms.agent import Agent
-from mushroom.approximators import Regressor
-from mushroom.approximators.parametric import TorchApproximator
-from mushroom.utils.dataset import parse_dataset
-from mushroom.utils.minibatches import minibatch_generator
+from mushroom_rl.algorithms.agent import Agent
+from mushroom_rl.approximators import Regressor
+from mushroom_rl.approximators.parametric import TorchApproximator
+from mushroom_rl.utils.dataset import parse_dataset
+from mushroom_rl.utils.minibatches import minibatch_generator
 
 from .cluster_weight_proj import cweight_mean_proj
 from .old_policies import PyTorchPolicy, MetricPolicy
@@ -65,7 +65,7 @@ class ProjectionMetricRLOld(Agent):
 
         policy = PyTorchPolicy(self._policy_torch)
 
-        super().__init__(policy, mdp_info, None)
+        super().__init__(mdp_info, policy, None)
 
     def _add_new_clusters(self, obs, act, adv, wq, old_cweights, old_cmeans):
         nb_cluster = len(self._policy_torch.cweights)

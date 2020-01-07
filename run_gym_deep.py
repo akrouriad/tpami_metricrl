@@ -2,11 +2,11 @@ import torch
 import numpy as np
 from tqdm import tqdm, trange
 
-from mushroom.core import Core
-from mushroom.algorithms.actor_critic import PPO, TRPO
-from mushroom.environments import Gym
-from mushroom.policy import GaussianTorchPolicy
-from mushroom.utils.dataset import compute_J
+from mushroom_rl.core import Core
+from mushroom_rl.algorithms.actor_critic import PPO, TRPO
+from mushroom_rl.environments import Gym
+from mushroom_rl.policy import GaussianTorchPolicy
+from mushroom_rl.utils.dataset import compute_J
 
 from metric_rl.logger import generate_log_folder, save_parameters, Logger
 from metric_rl.rl_shared import MLP

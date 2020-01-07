@@ -3,12 +3,12 @@ from tqdm import tqdm
 
 import torch
 
-from mushroom.algorithms.agent import Agent
-from mushroom.approximators import Regressor
-from mushroom.approximators.parametric import TorchApproximator
-from mushroom.utils.dataset import parse_dataset
-from mushroom.utils.torch import to_float_tensor
-from mushroom.utils.minibatches import minibatch_generator
+from mushroom_rl.algorithms.agent import Agent
+from mushroom_rl.approximators import Regressor
+from mushroom_rl.approximators.parametric import TorchApproximator
+from mushroom_rl.utils.dataset import parse_dataset
+from mushroom_rl.utils.torch import to_float_tensor
+from mushroom_rl.utils.minibatches import minibatch_generator
 
 from .cluster_weight_proj import cweight_mean_proj
 from .gaussian_proj import lin_gauss_kl_proj, utils_from_chol, mean_diff
@@ -47,7 +47,7 @@ class ProjectionSwapMetricRL(Agent):
         self._n_samples = n_samples
 
         self._iter = 0
-        super().__init__(policy, mdp_info)
+        super().__init__(mdp_info, policy)
 
     def fit(self, dataset):
         # Get dataset

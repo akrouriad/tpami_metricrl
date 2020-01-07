@@ -2,9 +2,9 @@ import torch
 import numpy as np
 from tqdm import tqdm, trange
 
-from mushroom.core import Core
-from mushroom.environments import Gym
-from mushroom.utils.dataset import compute_J
+from mushroom_rl.core import Core
+from mushroom_rl.environments import Gym
+from mushroom_rl.utils.dataset import compute_J
 
 from metric_rl.proj_metricrl_old import ProjectionMetricRLOld
 from metric_rl.logger import generate_log_folder, save_parameters, Logger
