@@ -68,6 +68,10 @@ class CriticMLP(MLP):
 def get_targets(v_func, x, x_n, rwd, absorbing, last, discount, lam, **predict_params):
     v = v_func(x, **predict_params)
     v_next = v_func(x_n, **predict_params)
+    return get_targets_v(v, v_next, rwd, absorbing, last, discount, lam)
+
+
+def get_targets_v(v, v_next, rwd, absorbing, last, discount, lam):
     gen_adv = np.empty_like(v)
     for rev_k, _ in enumerate(reversed(v)):
         k = len(v) - rev_k - 1

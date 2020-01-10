@@ -12,7 +12,7 @@ from mushroom_rl.utils.minibatches import minibatch_generator
 
 from .cluster_weight_proj import cweight_mean_proj
 from .gaussian_proj import lin_gauss_kl_proj, utils_from_chol, mean_diff
-from .rl_shared import get_targets
+from .rl_shared import get_targets, get_targets_v
 from .policies import MetricPolicy
 from .cluster_randomized_optimization import randomized_swap_optimization
 
@@ -69,11 +69,16 @@ class ProjectionSwapMetricQRL(Agent):
         obs = to_float_tensor(x, self._use_cuda)
         act = to_float_tensor(u,  self._use_cuda)
 
+        # for k in range(self._critic_fit_params['n_epochs']):
+        # v_next = self._get_v_from_q(xn)
+        # q_targ = r + self.mdp_info.gamma * (1 - absorbing[:, None]) * v_next
+        v = self._get_v_from_q(x)
         v_next = self._get_v_from_q(xn)
-        q_targ = r + self.mdp_info.gamma * (1 - absorbing[:, None]) * v_next
+        q_targ, adv = get_targets_v(v, v_next, r, absorbing, last, self.mdp_info.gamma, self._lambda)
 
         # Critic Update
         self._critic.fit(x, u, q_targ, **self._critic_fit_params)
+        # self._critic.fit(x, u, q_targ, n_epochs=1)
 
         # Save old data
         old_chol = self.policy.get_chol_t().detach()
@@ -92,7 +97,14 @@ class ProjectionSwapMetricQRL(Agent):
                    membership=self.policy.get_membership_t(obs).detach(),
                    **utils_from_chol(old_chol))
 
-        v = to_float_tensor(self._get_v_from_q(x), use_cuda=self._use_cuda)
+        # v = to_float_tensor(self._get_v_from_q(x), use_cuda=self._use_cuda)
+        # v = to_float_tensor(self._critic(x, u, prediction='min')[:, None] - self._get_v_from_q(x), use_cuda=self._use_cuda)
+        v = to_float_tensor(adv, use_cuda=self._use_cuda)
+        v = (v - v.mean()) / (v.std() + 1e-8)
+
+        # debug
+        q_0 = self._critic(x, u, output_tensor=True, idx=0)
+        q_1 = self._critic(x, u, output_tensor=True, idx=1)
 
         # optimize cw, mean and cov
         if self._iter % 2:
@@ -147,18 +159,24 @@ class ProjectionSwapMetricQRL(Agent):
                     proj_distrib = torch.distributions.MultivariateNormal(proj_d['means'], scale_tril=proj_d['chol'])
 
                     # Compute loss
-                    loss = self._loss(obs_i, proj_distrib.rsample(), v_i)
-                    loss.backward()
+                    self._loss(obs_i, act_i, proj_distrib, v_i, old_log_p_i).backward()
 
                     for opt in self._actor_optimizers[1:]:
                         opt.step()
 
-    def _loss(self, x, u, v):
+    def _loss(self, x, u, pi, v, old_log_p_i):
+        u = pi.rsample()
         q_0 = self._critic(x, u, output_tensor=True, idx=0)
         q_1 = self._critic(x, u, output_tensor=True, idx=1)
 
-        adv = torch.min(q_0, q_1)[:, None] - v
-        return -adv.mean()
+        q = torch.min(q_0, q_1)
+        return -q.mean()
+        # q = torch.min(q_0, q_1)
+        # q = (q - q.mean()) / (q.std() + 1e-8)
+        # return -q.mean()
+
+        # prob_ratio = torch.exp(pi.log_prob(u)[:, None] - old_log_p_i)
+        # return -torch.mean(prob_ratio * v)
 
     def _random_swap_clusters(self, obs, old):
         candidates = obs.detach().numpy()
@@ -239,8 +257,7 @@ class ProjectionSwapMetricQRL(Agent):
                 proj_distrib = torch.distributions.MultivariateNormal(proj_d['means'], scale_tril=proj_d['chol'])
 
                 # Compute loss
-                loss = self._loss(obs_i, proj_distrib.rsample(), v_i)
-                loss.backward()
+                self._loss(obs_i, act_i, proj_distrib, v_i, old_log_p_i).backward()
 
                 for opt in self._actor_optimizers:
                     opt.step()
