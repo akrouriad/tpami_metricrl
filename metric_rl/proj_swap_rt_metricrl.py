@@ -136,6 +136,8 @@ class ProjectionSwapRTMetricRL(Agent):
             self._random_swap_clusters(obs, old)
             self._update_mean_n_cov(obs, old, entropy_lb)
 
+        self._apply_projection(obs, old, entropy_lb)
+
         # logging
         if self._iter % self._no_swap_iteration == 0:
             logging_kl = torch.mean(
@@ -266,6 +268,30 @@ class ProjectionSwapRTMetricRL(Agent):
 
             for opt in self._actor_optimizers:
                 opt.step()
+
+    def _apply_projection(self, obs, old, entropy_lb):
+        # Get Basics stuff
+        w = self.policy.get_unormalized_membership_t(obs)
+        means = self.policy.get_intermediate_mean_t(obs, old['cmeans'])
+        chol = self.policy.get_chol_t()
+
+        # Compute cluster weights projection (eta)
+        eta = cweight_mean_proj(w, means, old['w'], old['means'], old['prec'], self._max_kl)
+        cweights_eta = eta * self.policy.get_cweights_t() + (1 - eta) * torch.abs(old['cweights'])
+        self.policy.set_cweights_t(cweights_eta)
+
+        # Compute mean projection (nu)
+        intermediate_means = self.policy.get_intermediate_mean_t(obs, old['cmeans'])
+        means = self.policy.get_mean_t(obs)
+
+        proj_d = lin_gauss_kl_proj(means, chol, intermediate_means, old['means'],
+                                   old['cov'], old['prec'], old['logdetcov'], self._max_kl, entropy_lb)
+        nu = proj_d['eta_mean']
+        cmeans_nu = nu * self.policy.get_cmeans_t() + (1 - nu) * old['cmeans']
+
+        self.policy.set_cmeans_t(cmeans_nu)
+        self.policy.set_chol_t(proj_d['chol'])
+
 
     def _update_target(self):
         """
