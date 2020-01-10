@@ -4,7 +4,7 @@ from tqdm import tqdm, trange
 
 from mushroom_rl.core import Core
 from mushroom_rl.algorithms.actor_critic import PPO, TRPO
-from mushroom_rl.environments import Gym
+from metric_rl.gym_fixed import GymFixed
 from mushroom_rl.policy import GaussianTorchPolicy
 from mushroom_rl.utils.dataset import compute_J
 
@@ -24,7 +24,7 @@ def experiment(alg, env_id, horizon, gamma, n_epochs, n_steps, n_steps_per_fit, 
 
     logger = Logger(log_name, 'net')
 
-    mdp = Gym(env_id, horizon, gamma)
+    mdp = GymFixed(env_id, horizon, gamma)
 
     # Set environment seed
     mdp.env.seed(seed)
