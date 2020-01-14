@@ -3,29 +3,35 @@ sys.path.append('../')
 from metric_rl.logger import generate_log_folder
 
 test = True
-local = True
+local = False
 
 # res_folder = '/home/ra61casa/mushroom_res/'
 res_folder = './log/'
 
-cluster_log_dir = '/work/scratch/ra61casa/env/logs/'
-cluster_script_dir = '/home/ra61casa/src/metricrl/experiments'
+tu_id = 'dt11kypo'
+home = '~/'
+#tu_id = 'ra61casa'
+#home = '~/src'
+
+cluster_log_dir = '/work/scratch/' + tu_id + '/logs/'
+cluster_script_dir = home + 'metricrl/experiments'
 cluster_python_cmd = 'python'
 
 local_python_cmd = 'python'
 
 base = '_metricrl'
 # envs = ['BipedalWalker-v2', 'RoboschoolHopper-v1', 'RoboschoolInvertedDoublePendulum-v1', 'RoboschoolWalker2d-v1', 'RoboschoolHalfCheetah-v1', 'RoboschoolAnt-v1', 'MountainCarContinuous-v0']; horizon =
-envs = ['HopperBulletEnv-v0', 'Walker2DBulletEnv-v0', 'HalfCheetahBulletEnv-v0', 'AntBulletEnv-v0']
+envs = ['HopperBulletEnv-v0']#, 'Walker2DBulletEnv-v0', 'HalfCheetahBulletEnv-v0', 'AntBulletEnv-v0']
+
 horizon = 1000
-nb_runs = 11
-n_epochs = 1000
+nb_runs = 1#1
+n_epochs = 1#000
 n_steps = 3000
 n_steps_per_fit = 3000
 n_episodes_test = 5
 
 all_par = []
-n_clusterss = [10, 20, 40]
+n_clusterss = [10]#, 20, 40]
 a_cost_scales = [0., 100.]
 alg_name = 'metricrl'
 
