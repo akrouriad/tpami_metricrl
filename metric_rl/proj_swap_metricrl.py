@@ -6,7 +6,7 @@ import torch
 from mushroom_rl.algorithms.agent import Agent
 from mushroom_rl.approximators import Regressor
 from mushroom_rl.approximators.parametric import TorchApproximator
-from mushroom_rl.utils.dataset import parse_dataset
+from mushroom_rl.utils.dataset import parse_dataset, compute_J
 from mushroom_rl.utils.torch import to_float_tensor
 from mushroom_rl.utils.minibatches import minibatch_generator
 
@@ -20,7 +20,7 @@ from .cluster_randomized_optimization import randomized_swap_optimization
 class ProjectionSwapMetricRL(Agent):
     def __init__(self, mdp_info, policy_params, critic_params,
                  actor_optimizer, n_epochs_per_fit, batch_size,
-                 entropy_profile, max_kl, lam, n_samples=1000, critic_fit_params=None):
+                 entropy_profile, max_kl, lam, n_samples=1000, critic_fit_params=None, a_cost_scale=0.):
         self._critic_fit_params = dict() if critic_fit_params is None else critic_fit_params
 
         policy = MetricPolicy(mdp_info.observation_space.shape,
@@ -38,10 +38,12 @@ class ProjectionSwapMetricRL(Agent):
 
         self._critic = Regressor(TorchApproximator, **critic_params)
 
-        self._e_profile = entropy_profile['class'](policy, e_thresh=policy.entropy() / 2,
-                                                   **entropy_profile['params'])
+        # self._e_profile = entropy_profile['class'](policy, **entropy_profile['params'])
+        self._e_profile = entropy_profile['class'](policy, e_thresh=policy.entropy() / 2, **entropy_profile['params'])
         self._max_kl = max_kl
         self._lambda = lam
+
+        self._a_cost_scale = a_cost_scale
 
         self._n_swaps = float(policy.n_clusters)
         self._n_samples = n_samples
@@ -54,7 +56,8 @@ class ProjectionSwapMetricRL(Agent):
         x, u, r, xn, absorbing, last = parse_dataset(dataset)
         x = x.astype(np.float32)
         u = u.astype(np.float32)
-        r = r.astype(np.float32)
+        assert((self.mdp_info.action_space.high == -self.mdp_info.action_space.low).all())
+        r = r.astype(np.float32) - self._a_cost_scale * np.squeeze(np.sum(np.logical_or(u > self.mdp_info.action_space.high, u < -self.mdp_info.action_space.high) * (u**2 - self.mdp_info.action_space.high), axis=1))
         xn = xn.astype(np.float32)
 
         # Get tensors
@@ -254,6 +257,7 @@ class ProjectionSwapMetricRL(Agent):
             w = self.policy.get_membership_t(obs)
             self.policy.set_cluster_centers(c_old)
             return torch.sum(w).item()
+            # return torch.min(torch.sum(w, dim=1)).item()
 
         # def evaluation_function(c_i, clust_idxs=None, samp_idxs=None):
         #     c_old = self.policy.get_cluster_centers()

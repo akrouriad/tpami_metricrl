@@ -4,7 +4,7 @@ import numpy as np
 import pybullet_envs
 import pybullet
 import gym
-
+import time
 
 def rescale_joint(j, theta_r):
     theta_bar = 0.5 * (j.lowerLimit + j.upperLimit)
@@ -14,20 +14,33 @@ def rescale_joint(j, theta_r):
 
 
 if __name__ == '__main__':
-    log_name = 'Results/PyBulletHopper/projection_2019-06-07_15-37-01_5'
-    iteration = 929
+    log_name = 'log/HopperBulletEnv-v0/projection_rand1k10_quadcost_2020-01-13_12-54-04_20'
+    iteration = 366
 
     state_reconstruction_precision = 1e-7
 
     pybullet.connect(pybullet.DIRECT)
     env = gym.make('HopperBulletEnv-v0')
+    env._max_episode_steps = np.inf
 
     env.render(mode='human')
 
     policy_path = os.path.join(log_name, 'net/network-' + str(iteration) + '.pth')
     policy_torch = torch.load(policy_path)
 
-    env.reset()
+    obs = env.reset()
+    done = False
+    acts = []
+    # while not done:
+    # for k in range(1000):
+    #
+    #     dist_info = policy_torch.forward(torch.tensor(obs))
+    #     pol = torch.distributions.MultivariateNormal(dist_info[0], scale_tril=dist_info[1])
+    #     # acts.append(pol.sample().detach().numpy().squeeze())
+    #     acts.append(policy_torch.get_mean(torch.tensor(obs)).detach().numpy().squeeze())
+    #     obs, _, done, _ = env.step(acts[-1])
+    #     time.sleep(1./3000)
+
     robot = env.env.robot
     robot_body = robot.robot_body
 

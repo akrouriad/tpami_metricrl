@@ -49,7 +49,11 @@ class MetricRegressor(nn.Module):
         if len(s.size()) == 1:
             s = s[None, :]
         w = self.get_membership(s)
-        return w.matmul(self.means)
+        return w.matmul(self.get_cmeans())
+
+    def get_cmeans(self):
+        # return torch.tanh(self.means)
+        return self.means
 
     def get_chol(self):
         return torch.diag(torch.exp(self._log_sigma))
@@ -137,7 +141,7 @@ class MetricPolicy(TorchPolicy):
         self._regressor.set_c_weights(cweights)
 
     def get_cmeans_t(self):
-        return self._regressor.means
+        return self._regressor.get_cmeans()
 
     def set_cmeans_t(self, means):
         self._regressor.means.data = means

@@ -17,7 +17,7 @@ from joblib import Parallel, delayed
 
 from multiprocessing import Process
 
-def experiment(env_id, horizon, gamma, n_epochs, n_steps, n_steps_per_fit, n_episodes_test, seed, params,
+def experiment(env_id, n_clusters, horizon, seed, gamma=.99, n_epochs=1000, n_steps=3000, n_steps_per_fit=3000, n_episodes_test=5, a_cost_scale=10.,
                log_name=None, swap=True):
     print('Metric RL')
     np.random.seed(seed)
@@ -25,6 +25,9 @@ def experiment(env_id, horizon, gamma, n_epochs, n_steps, n_steps_per_fit, n_epi
     torch.set_num_threads(1)
 
     logger = Logger(log_name, 'net')
+
+    params = get_parameters(n_clusters)
+    save_parameters(log_name, params)
 
     mdp = GymFixed(env_id, horizon, gamma)
 
@@ -38,6 +41,7 @@ def experiment(env_id, horizon, gamma, n_epochs, n_steps, n_steps_per_fit, n_epi
     params['critic_params'] = critic_params
 
     if swap:
+        params['a_cost_scale'] = a_cost_scale
         agent = ProjectionSwapMetricRL(mdp.info, **params)
     else:
         agent = ProjectionMetricRL(mdp.info, **params)
@@ -75,14 +79,14 @@ def experiment(env_id, horizon, gamma, n_epochs, n_steps, n_steps_per_fit, n_epi
 def get_parameters(n_clusters):
 
     policy_params = dict(n_clusters=n_clusters,
-                         std_0=1.0)
+                         std_0=1.)
 
     actor_optimizer = {'class': optim.Adam,
-                       'cw_params': {'lr': .1},
-                       'means_params': {'lr': .001},
+                       'cw_params': {'lr': .01},
+                       'means_params': {'lr': .01},
                        'log_sigma_params': {'lr': .001}}
     e_profile = {'class': TwoPhaseEntropProfile,
-                 'params': {'e_reduc': .015}}
+                 'params': {'e_reduc': 0.015}}
 
     critic_params = dict(network=MLP,
                          optimizer={'class': optim.Adam,
@@ -114,8 +118,7 @@ if __name__ == '__main__':
     n_experiments = 1
     n_jobs = n_experiments
 
-    n_clusters = 5
-    params = get_parameters(n_clusters)
+    n_clusters = 10
 
     # Bipedal Walker
     # env_id = 'BipedalWalker-v2'
@@ -124,10 +127,10 @@ if __name__ == '__main__':
     horizon = 1000
     gamma = .99
 
-    # log_name = generate_log_folder(env_id, 'projection_rand1k10', str(n_clusters), True)
-    # save_parameters(log_name, params)
-    # Parallel(n_jobs=n_jobs)(delayed(experiment)(env_id=env_id, horizon=horizon, gamma=gamma, n_epochs=1000, n_steps=3000, n_steps_per_fit=3000,
-    #            n_episodes_test=25, seed=seed, params=params, log_name=log_name, swap=True) for seed in range(n_experiments))
+    log_name = generate_log_folder(env_id, 'projection_rand1k10_quadcost', str(n_clusters), True)
+    print('log name', log_name)
+    Parallel(n_jobs=n_jobs)(delayed(experiment)(env_id=env_id, n_clusters=n_clusters, horizon=horizon, gamma=gamma, n_epochs=10000, n_steps=3000, n_steps_per_fit=3000,
+               n_episodes_test=25, seed=seed, log_name=log_name, swap=True) for seed in range(n_experiments))
 
     # ps = []
     # for k in range(n_experiments):
@@ -140,7 +143,7 @@ if __name__ == '__main__':
     #     p.join()
 
     # Hopper Bullet
-    log_name = generate_log_folder(env_id, 'projection_swap1kclus5', str(n_clusters), True)
-    save_parameters(log_name, params)
-    experiment(env_id='HopperBulletEnv-v0', horizon=horizon, gamma=gamma, n_epochs=1000, n_steps=3000, n_steps_per_fit=3000,
-               n_episodes_test=25, seed=0, params=params, log_name=log_name, swap=True)
+    # log_name = generate_log_folder(env_id, 'projection_swap1kclus5', str(n_clusters), True)
+    # save_parameters(log_name, params)
+    # experiment(env_id='HopperBulletEnv-v0', horizon=horizon, gamma=gamma, n_epochs=1000, n_steps=3000, n_steps_per_fit=3000,
+    #            n_episodes_test=25, seed=0, params=params, log_name=log_name, swap=True)
