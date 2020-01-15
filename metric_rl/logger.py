@@ -52,7 +52,7 @@ class Logger:
 
     def save_network(self, network, n_it, seed=None):
         filename = 'network-'
-        if seed:
+        if seed is not None:
             filename += str(seed) + '-'
         filename += str(n_it) + '.pth'
         file_path = os.path.join(self._sub_directory, filename)
@@ -60,7 +60,7 @@ class Logger:
 
     def save_numpy(self, name, array, seed=None):
 
-        if seed:
+        if seed is not None:
             name += '-' + str(seed)
         file_path = os.path.join(self._directory, name)
         np.save(file_path, array)
