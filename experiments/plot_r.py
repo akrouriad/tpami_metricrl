@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
-res_folder = './log/'
+res_folder = './results/'
 
 envs = ['HopperBulletEnv-v0', 'Walker2DBulletEnv-v0', 'HalfCheetahBulletEnv-v0', 'AntBulletEnv-v0']
 nb_runs = 11
@@ -22,18 +22,37 @@ for env in envs:
             alg_label = 'c' + str(n_clusters) + 'a' + str(a_cost_scale)
             all_perfs_a = []
             for run in range(nb_runs):
-                postfix = alg_label + 'r' + str(run)
-                r_name = os.path.join(res_folder, env, alg_name + postfix, 'R.npy')
-                all_perfs_a.append(np.load(r_name))
+                postfix = '_' + alg_label + 'r' + str(run)
+                filename = 'R'
+                filename += '-' + str(run) + '.npy'
+                r_name = os.path.join(res_folder, env, alg_name + postfix, filename)
+
+                try:
+                    R = np.load(r_name)
+                    if R.shape[0] != 1000:
+                       print(r_name, 'wrong shape')
+                    else:
+                        all_perfs_a.append(R)
+                except:
+                    print(r_name, 'bad file')
+
             all_perfs.append(all_perfs_a)
             alg_labels.append(alg_label)
+
+
+    plt.figure()
+    legend_lab = []
     for n, perf in zip(alg_labels, all_perfs):
         perf = np.array(perf)
-        plt.plot(range(n_epochs), np.median(perf, axis=0))
-        plt.fill_between(range(n_epochs), np.quantile(perf, axis=0, q=.25), np.quantile(perf, axis=0, q=.75), alpha=.5)
-    plt.legend(alg_labels)
+        print('shape:', perf.shape)
+        if perf.shape[0] > 0:
+            plt.plot(range(n_epochs), np.median(perf, axis=0).squeeze())
+            plt.fill_between(range(n_epochs), np.quantile(perf, axis=0, q=.25), np.quantile(perf, axis=0, q=.75), alpha=.5)
+            legend_lab.append(n)
+    plt.legend(legend_lab)
     # plt.show()
     plt.savefig(xp_name + env + '.png')
+    plt.clf()
 
 # nb_run = 11
 # suff = [''] + ['-' + str(k+1) for k in range(nb_run - 1)]

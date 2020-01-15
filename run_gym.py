@@ -64,13 +64,14 @@ def experiment(env_id, n_clusters, horizon, seed, gamma=.99, n_epochs=1000, n_st
         R_list.append(R)
         E_list.append(E)
 
-        logger.save(network=agent.policy._regressor, J=J_list, R=R_list, E=E_list, seed=seed)
+        logger.save(J=J_list, R=R_list, E=E_list, seed=seed)
 
         tqdm.write('END OF EPOCH ' + str(it))
         tqdm.write('J: {}, R: {}, entropy: {}'.format(J, R, E))
         tqdm.write('cweights {}'.format(agent.policy._regressor._c_weights))
         tqdm.write('##################################################################################################')
 
+    logger.save(network=agent.policy._regressor, seed=seed)
     # print('Press a button to visualize')
     # input()
     # core.evaluate(n_episodes=5, render=True)

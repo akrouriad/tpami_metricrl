@@ -5,9 +5,6 @@ from metric_rl.logger import generate_log_folder
 test = True
 local = False
 
-# res_folder = '/home/ra61casa/mushroom_res/'
-res_folder = './log/'
-
 tu_id = 'dt11kypo'
 home = '~/'
 #tu_id = 'ra61casa'
@@ -20,30 +17,31 @@ cluster_python_cmd = 'python'
 local_python_cmd = 'python'
 
 base = '_metricrl'
-# envs = ['BipedalWalker-v2', 'RoboschoolHopper-v1', 'RoboschoolInvertedDoublePendulum-v1', 'RoboschoolWalker2d-v1', 'RoboschoolHalfCheetah-v1', 'RoboschoolAnt-v1', 'MountainCarContinuous-v0']; horizon =
-envs = ['HopperBulletEnv-v0']#, 'Walker2DBulletEnv-v0', 'HalfCheetahBulletEnv-v0', 'AntBulletEnv-v0']
+# envs = ['BipedalWalker-v2', 'RoboschoolHopper-v1', 'RoboschoolInvertedDoublePendulum-v1', 'RoboschoolWalker2d-v1', 'RoboschoolHalfCheetah-v1', 'RoboschoolAnt-v1', 'MountainCarContinuous-v0']
+envs = ['HopperBulletEnv-v0', 'Walker2DBulletEnv-v0', 'HalfCheetahBulletEnv-v0', 'AntBulletEnv-v0']
 
 horizon = 1000
-nb_runs = 1#1
-n_epochs = 1#000
+nb_runs = 11
+n_epochs = 1000
 n_steps = 3000
 n_steps_per_fit = 3000
 n_episodes_test = 5
 
 all_par = []
-n_clusterss = [10]#, 20, 40]
-a_cost_scales = [0., 100.]
+n_clusterss = [10, 20, 40]
+a_cost_scales = [0., 10.]
 alg_name = 'metricrl'
 
 # Creating parameters tables
-for run in range(nb_runs):
-    for env in envs:
-        for n_clusters in n_clusterss:
-            for a_cost_scale in a_cost_scales:
-                postfix = 'c' + str(n_clusters) + 'a' + str(a_cost_scale) + 'r' + str(run)
-                log_name = generate_log_folder(name=env, algorithm_name=alg_name, postfix=postfix, timestamp=False, base_folder=res_folder)
+for env in envs:
+    for n_clusters in n_clusterss:
+        for a_cost_scale in a_cost_scales:
+            postfix = 'c' + str(n_clusters) + 'a' + str(a_cost_scale)
+            log_name = generate_log_folder(name=env, algorithm_name=alg_name, postfix=postfix, timestamp=False, base_folder=cluster_log_dir)
+
+            for run in range(nb_runs):
                 params = {'env_id': env, 'n_clusters': n_clusters, 'horizon': horizon, 'seed': run, 'a_cost_scale': a_cost_scale, 'log_name': log_name,
-                          'n_epochs': n_epochs, 'n_steps': n_steps, 'n_steps_per_fit': n_steps_per_fit, 'n_episodes_test': n_episodes_test}
+                      'n_epochs': n_epochs, 'n_steps': n_steps, 'n_steps_per_fit': n_steps_per_fit, 'n_episodes_test': n_episodes_test}
                 all_par.append(params)
 
 # Creating launch scripts
@@ -61,6 +59,7 @@ import os
 from multiprocessing import Process
 def learn_process(dict):
   sys.stdout = open(os.path.join(dict['log_name'], "console.out"), "w")
+  sys.stderr = open(os.path.join(dict['log_name'], "console.err"), "w")
   import run_gym
   run_gym.experiment(**dict)
      
