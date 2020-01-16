@@ -17,7 +17,7 @@ from joblib import Parallel, delayed
 
 from multiprocessing import Process
 
-def experiment(env_id, n_clusters, horizon, seed, gamma=.99, n_epochs=1000, n_steps=3000, n_steps_per_fit=3000, n_episodes_test=5, a_cost_scale=10.,
+def experiment(env_id, n_clusters, horizon, seed, gamma=.99, n_epochs=1000, n_steps=3000, n_steps_per_fit=3000, n_episodes_test=5, a_cost_scale=0.,
                log_name=None, swap=True):
     print('Metric RL')
     np.random.seed(seed)
