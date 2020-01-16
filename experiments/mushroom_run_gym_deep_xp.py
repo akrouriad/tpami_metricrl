@@ -61,7 +61,7 @@ def learn_process(dict):
   sys.stdout = open(os.path.join(dict['log_name'], 'console' + str(dict['seed']) + '.out'), "w")
   sys.stderr = open(os.path.join(dict['log_name'], 'console' + str(dict['seed']) + '.err'), "w")
   import run_gym_deep
-  run_gym.experiment(**dict)
+  run_gym_deep.experiment(**dict)
      
 ps = []
 params = {}
