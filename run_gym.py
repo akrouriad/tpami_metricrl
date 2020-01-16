@@ -87,7 +87,7 @@ def get_parameters(n_clusters):
                        'means_params': {'lr': .01},
                        'log_sigma_params': {'lr': .001}}
     e_profile = {'class': TwoPhaseEntropProfile,
-                 'params': {'e_reduc': 0.015}}
+                 'params': {'e_reduc': 0.0075}}
 
     critic_params = dict(network=MLP,
                          optimizer={'class': optim.Adam,

@@ -2,7 +2,7 @@ import sys
 sys.path.append('../')
 from metric_rl.logger import generate_log_folder
 
-test = True
+test = False
 local = False
 
 tu_id = 'dt11kypo'
@@ -29,20 +29,20 @@ n_episodes_test = 5
 
 all_par = []
 n_clusterss = [10, 20, 40]
-a_cost_scales = [0., 10.]
 alg_name = 'metricrl'
 
 # Creating parameters tables
 for env in envs:
     for n_clusters in n_clusterss:
-        for a_cost_scale in a_cost_scales:
-            postfix = 'c' + str(n_clusters) + 'a' + str(a_cost_scale)
-            log_name = generate_log_folder(name=env, algorithm_name=alg_name, postfix=postfix, timestamp=False, base_folder=cluster_log_dir)
+        postfix = 'c' + str(n_clusters)
+        log_name = generate_log_folder(name=env, algorithm_name=alg_name, postfix=postfix,
+                                       timestamp=False, base_folder=cluster_log_dir)
 
-            for run in range(nb_runs):
-                params = {'env_id': env, 'n_clusters': n_clusters, 'horizon': horizon, 'seed': run, 'a_cost_scale': a_cost_scale, 'log_name': log_name,
-                      'n_epochs': n_epochs, 'n_steps': n_steps, 'n_steps_per_fit': n_steps_per_fit, 'n_episodes_test': n_episodes_test}
-                all_par.append(params)
+        for run in range(nb_runs):
+            params = {'env_id': env, 'n_clusters': n_clusters, 'horizon': horizon, 'seed': run, 'log_name': log_name,
+                      'n_epochs': n_epochs, 'n_steps': n_steps, 'n_steps_per_fit': n_steps_per_fit,
+                      'n_episodes_test': n_episodes_test}
+            all_par.append(params)
 
 # Creating launch scripts
 slurms = []
