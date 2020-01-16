@@ -18,7 +18,7 @@ from joblib import Parallel, delayed
 from multiprocessing import Process
 
 def experiment(env_id, n_clusters, horizon, seed, gamma=.99, n_epochs=1000, n_steps=3000, n_steps_per_fit=3000, n_episodes_test=5, a_cost_scale=0.,
-               log_name=None, swap=True):
+               log_name=None, swap=True, clus_sel='covr'):
     print('Metric RL')
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -42,6 +42,7 @@ def experiment(env_id, n_clusters, horizon, seed, gamma=.99, n_epochs=1000, n_st
 
     if swap:
         params['a_cost_scale'] = a_cost_scale
+        params['clus_sel'] = clus_sel
         agent = ProjectionSwapMetricRL(mdp.info, **params)
     else:
         agent = ProjectionMetricRL(mdp.info, **params)
