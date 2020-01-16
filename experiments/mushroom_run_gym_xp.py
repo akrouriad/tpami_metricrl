@@ -58,8 +58,8 @@ import sys
 import os
 from multiprocessing import Process
 def learn_process(dict):
-  sys.stdout = open(os.path.join(dict['log_name'], "console.out"), "w")
-  sys.stderr = open(os.path.join(dict['log_name'], "console.err"), "w")
+  sys.stdout = open(os.path.join(dict['log_name'], 'console' + str(dict['seed']) + '.out'), "w")
+  sys.stderr = open(os.path.join(dict['log_name'], 'console' + str(dict['seed']) + '.err'), "w")
   import run_gym
   run_gym.experiment(**dict)
      
