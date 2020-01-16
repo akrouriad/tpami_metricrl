@@ -2,13 +2,13 @@ import sys
 sys.path.append('../')
 from metric_rl.logger import generate_log_folder
 
-test = True
+test = False
 local = False
 
 # tu_id = 'dt11kypo'
 # home = '~/'
 tu_id = 'ra61casa'
-home = '~/src'
+home = '~/src/'
 
 cluster_log_dir = '/work/scratch/' + tu_id + '/logs/'
 cluster_script_dir = home + 'metricrl/experiments'
@@ -22,7 +22,7 @@ base = '_metricrl'
 envs = ['HopperBulletEnv-v0', 'Walker2DBulletEnv-v0', 'HalfCheetahBulletEnv-v0', 'AntBulletEnv-v0']
 
 horizon = 1000
-nb_runs = 1
+nb_runs = 11
 n_epochs = 1000
 n_steps = 3000
 n_steps_per_fit = 3000
