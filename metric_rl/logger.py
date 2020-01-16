@@ -20,8 +20,8 @@ def generate_log_folder(name, algorithm_name='', postfix='', timestamp=False, ba
 
     network_folder_name = os.path.join(folder_name, 'net')
 
-    pathlib.Path(folder_name).mkdir(parents=True)
-    pathlib.Path(network_folder_name).mkdir(parents=True)
+    pathlib.Path(folder_name).mkdir(parents=True, exist_ok=True)
+    pathlib.Path(network_folder_name).mkdir(parents=True, exist_ok=True)
 
     return folder_name
 
