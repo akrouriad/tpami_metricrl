@@ -62,6 +62,24 @@ def experiment(alg_name, env_id, horizon, gamma, n_epochs, n_steps, n_steps_per_
     R_list = list()
     E_list = list()
 
+    # Initial evaluation
+    dataset = core.evaluate(n_episodes=n_episodes_test, render=False)
+
+    J = np.mean(compute_J(dataset, mdp.info.gamma))
+    R = np.mean(compute_J(dataset))
+    E = agent.policy.entropy()
+
+    J_list.append(J)
+    R_list.append(R)
+    E_list.append(E)
+
+    logger.save(J=J_list, R=R_list, E=E_list, seed=seed)
+
+    tqdm.write('EPOCH 0')
+    tqdm.write('J: {}, R: {}, entropy: {}'.format(J, R, E))
+    tqdm.write('##################################################################################################')
+
+    # Learning
     for it in range(n_epochs):
         core.learn(n_steps=n_steps, n_steps_per_fit=n_steps_per_fit)
         dataset = core.evaluate(n_episodes=n_episodes_test, render=False)
@@ -74,9 +92,9 @@ def experiment(alg_name, env_id, horizon, gamma, n_epochs, n_steps, n_steps_per_
         R_list.append(R)
         E_list.append(E)
 
-        logger.save(J=J_list, R=R_list, E=E_list)
+        logger.save(J=J_list, R=R_list, E=E_list, seed=seed)
 
-        tqdm.write('END OF EPOCH ' + str(it))
+        tqdm.write('END OF EPOCH ' + str(it + 1))
         tqdm.write('J: {}, R: {}, entropy: {}'.format(J, R, E))
         tqdm.write('##################################################################################################')
 
