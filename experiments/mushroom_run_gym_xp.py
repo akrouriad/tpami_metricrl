@@ -10,7 +10,8 @@ home = '~/'
 #tu_id = 'ra61casa'
 #home = '~/src'
 
-cluster_log_dir = '/work/scratch/' + tu_id + '/logs/'
+experiment_name = 'entropy'
+cluster_log_dir = '/work/scratch/' + tu_id + '/logs/' + experiment_name + '/'
 cluster_script_dir = home + 'metricrl/experiments'
 cluster_python_cmd = 'python'
 
