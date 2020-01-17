@@ -20,7 +20,7 @@ from .cluster_randomized_optimization import randomized_swap_optimization
 class ProjectionSwapMetricRL(Agent):
     def __init__(self, mdp_info, policy_params, critic_params,
                  actor_optimizer, n_epochs_per_fit, batch_size,
-                 entropy_profile, max_kl, lam, n_samples=1000, critic_fit_params=None, a_cost_scale=0.):
+                 entropy_profile, max_kl, lam, n_samples=1000, critic_fit_params=None, a_cost_scale=0., clus_sel='covr'):
         self._critic_fit_params = dict() if critic_fit_params is None else critic_fit_params
 
         policy = MetricPolicy(mdp_info.observation_space.shape,
@@ -44,7 +44,7 @@ class ProjectionSwapMetricRL(Agent):
         self._lambda = lam
 
         self._a_cost_scale = a_cost_scale
-
+        self._clus_sel = clus_sel
         self._n_swaps = float(policy.n_clusters)
         self._n_samples = n_samples
 
@@ -240,9 +240,11 @@ class ProjectionSwapMetricRL(Agent):
         cluster_h = torch.sum(w, dim=0)
         cluster_h = cluster_h.detach().numpy().squeeze()
 
-        sample_h = torch.sum(w, dim=1)
-        sample_h = sample_h.detach().numpy().squeeze()
-        # sample_h = adv.detach().numpy().squeeze()
+        if self._clus_sel == 'adv':
+            sample_h = adv.detach().numpy().squeeze()
+        else:
+            sample_h = torch.sum(w, dim=1)
+            sample_h = sample_h.detach().numpy().squeeze()
 
         def bound_function(c_i):
             c_old = self.policy.get_cluster_centers()
@@ -251,28 +253,29 @@ class ProjectionSwapMetricRL(Agent):
             self.policy.set_cluster_centers(c_old)
             return kl_swap < self._max_kl
 
-        def evaluation_function(c_i, *args):
-            c_old = self.policy.get_cluster_centers()
-            self.policy.set_cluster_centers(c_i)
-            w = self.policy.get_membership_t(obs)
-            self.policy.set_cluster_centers(c_old)
-            return torch.sum(w).item()
-            # return torch.min(torch.sum(w, dim=1)).item()
+        def evaluation_function(c_i, clust_idxs=None, samp_idxs=None):
+            if self._clus_sel == 'adv':
+                c_old = self.policy.get_cluster_centers()
+                cmeas_backup = self.policy._regressor.means.clone()
 
-        # def evaluation_function(c_i, clust_idxs=None, samp_idxs=None):
-        #     c_old = self.policy.get_cluster_centers()
-        #     cmeas_backup = self.policy._regressor.means.clone()
-        #
-        #     self.policy.set_cluster_centers(c_i)
-        #     if clust_idxs is not None:
-        #         for k, si in zip(clust_idxs, samp_idxs):
-        #             self.policy._regressor.means.data[k] = act[si]
-        #     prob_ratio = torch.exp(self.policy.log_prob_t(obs, act) - old['log_p'])
-        #     fitness = torch.mean(prob_ratio * adv).item()
-        #
-        #     self.policy.set_cluster_centers(c_old)
-        #     self.policy._regressor.means.data = cmeas_backup
-        #     return fitness
+                self.policy.set_cluster_centers(c_i)
+                if clust_idxs is not None:
+                    for k, si in zip(clust_idxs, samp_idxs):
+                        self.policy._regressor.means.data[k] = act[si]
+                prob_ratio = torch.exp(self.policy.log_prob_t(obs, act) - old['log_p'])
+                fitness = torch.mean(prob_ratio * adv).item()
+
+                self.policy.set_cluster_centers(c_old)
+                self.policy._regressor.means.data = cmeas_backup
+                return fitness
+            else:
+                c_old = self.policy.get_cluster_centers()
+                self.policy.set_cluster_centers(c_i)
+                w = self.policy.get_membership_t(obs)
+                self.policy.set_cluster_centers(c_old)
+                if self._clus_sel == 'min':
+                    return torch.min(torch.sum(w, dim=1)).item()
+                return torch.sum(w).item()
 
         swapped = False
         while True:
