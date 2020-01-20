@@ -63,7 +63,8 @@ def randomized_swap_optimization(c_0, candidates, cluster_h, sample_h,
     #cluster_index_sampler_data = dict(sampling_class=BoltzmannSampler, params=dict(beta=1.0))
     cluster_index_sampler_data = dict(sampling_class=PolynomialSampling, params=dict(exponent=1))
 
-    cluster_center_sampler_data = dict(sampling_class=BoltzmannSampler, params=dict(beta=1.0))
+    # cluster_center_sampler_data = dict(sampling_class=BoltzmannSampler, params=dict(beta=1.0))
+    cluster_center_sampler_data = dict(sampling_class=PolynomialSampling, params=dict(exponent=1))
 
     cluster_index_sampler = \
         cluster_index_sampler_data['sampling_class'](cluster_h, **cluster_index_sampler_data['params'])

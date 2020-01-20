@@ -20,10 +20,11 @@ median = False
 
 all_par = []
 n_clusterss = [10, 20, 40]
-a_cost_scales = [0.]#, 10.]
+# a_cost_scales = [0.]#, 10.]
+clus_sels = ['min', 'adv']
 alg_name = 'metricrl'
-xp_name = 'acost'
-
+xp_name = 'swaptype'
+W = 50
 
 def plot_data(x, median):
     if median:
@@ -33,7 +34,7 @@ def plot_data(x, median):
         mean, interval = get_mean_and_confidence(x)
         print(mean.shape)
         print(interval.shape)
-        plt.plot(range(n_epochs), mean)
+        plt.plot(range(n_epochs), mean, linewidth=2)
         plt.fill_between(range(n_epochs), mean - interval, mean + interval, alpha=.5)
 
 
@@ -44,8 +45,8 @@ for env in envs:
     all_entropy = []
     alg_labels = []
     for n_clusters in n_clusterss:
-        for a_cost_scale in a_cost_scales:
-            alg_label = 'c' + str(n_clusters) + 'a' + str(a_cost_scale)
+        for clus_sel in clus_sels:
+            alg_label = 'c' + str(n_clusters) + clus_sel
             all_perfs_a = []
             all_entropy_a = []
             for run in range(nb_runs):
@@ -76,6 +77,8 @@ for env in envs:
     legend_lab = []
     for n, R in zip(alg_labels, all_perfs):
         R = np.array(R)
+        for k, r in enumerate(R):
+            R[k] = np.convolve(r, np.ones((W,)) / W, mode='same')
         print('shape:', R.shape)
         plot_data(R, median)
         legend_lab.append(n)
