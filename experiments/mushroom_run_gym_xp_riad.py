@@ -10,7 +10,8 @@ local = False
 tu_id = 'ra61casa'
 home = '~/src/'
 
-cluster_log_dir = '/work/scratch/' + tu_id + '/logs/'
+experiment_name = 'clus_heur'
+cluster_log_dir = '/work/scratch/' + tu_id + '/logs/' + experiment_name + '/'
 cluster_script_dir = home + 'metricrl/experiments'
 cluster_python_cmd = 'python'
 
@@ -29,15 +30,16 @@ n_steps_per_fit = 3000
 n_episodes_test = 5
 
 all_par = []
-n_clusterss = [10, 20, 40]
-clus_sels = ['min', 'adv']
+# n_clusterss = [10, 20, 40]
+n_clusterss = [10]
+clus_sels = ['adv', 'old_covr', 'covr', 'covr_minpen']
 alg_name = 'metricrl'
 
 # Creating parameters tables
 for env in envs:
     for n_clusters in n_clusterss:
         for clus_sel in clus_sels:
-            postfix = 'c' + str(n_clusters) + clus_sel
+            postfix = 'c' + str(n_clusters) + 'h' + clus_sel
             log_name = generate_log_folder(name=env, algorithm_name=alg_name, postfix=postfix,
                                            timestamp=False, base_folder=local_log_dir if local else cluster_log_dir)
 
