@@ -14,18 +14,22 @@ def rescale_joint(j, theta_r):
 
 
 if __name__ == '__main__':
-    log_name = 'log/HopperBulletEnv-v0/projection_rand1k10_quadcost_2020-01-13_12-54-04_20'
-    iteration = 366
+    iteration = 1001
+
+    env_id = 'HopperBulletEnv-v0'
+    log_name = 'Results/entropy/' + env_id + '/metricrl_c40'
+
+    print(log_name)
 
     state_reconstruction_precision = 1e-7
 
     pybullet.connect(pybullet.DIRECT)
-    env = gym.make('HopperBulletEnv-v0')
+    env = gym.make(env_id)
     env._max_episode_steps = np.inf
 
     env.render(mode='human')
 
-    policy_path = os.path.join(log_name, 'net/network-' + str(iteration) + '.pth')
+    policy_path = os.path.join(log_name, 'net/network-5-' + str(iteration) + '.pth')
     policy_torch = torch.load(policy_path)
 
     obs = env.reset()

@@ -53,6 +53,24 @@ def experiment(env_id, n_clusters, horizon, seed, gamma=.99, n_epochs=1000, n_st
     R_list = list()
     E_list = list()
 
+    # Initial evaluation
+    dataset = core.evaluate(n_episodes=n_episodes_test, render=False)
+
+    J = np.mean(compute_J(dataset, mdp.info.gamma))
+    R = np.mean(compute_J(dataset))
+    E = agent.policy.entropy()
+
+    J_list.append(J)
+    R_list.append(R)
+    E_list.append(E)
+
+    logger.save(J=J_list, R=R_list, E=E_list, seed=seed)
+
+    tqdm.write('EPOCH 0')
+    tqdm.write('J: {}, R: {}, entropy: {}'.format(J, R, E))
+    tqdm.write('##################################################################################################')
+
+    # Learning
     for it in range(n_epochs):
         core.learn(n_steps=n_steps, n_steps_per_fit=n_steps_per_fit, quiet=True)
         dataset = core.evaluate(n_episodes=n_episodes_test, render=False, quiet=True)
@@ -88,7 +106,7 @@ def get_parameters(n_clusters):
                        'means_params': {'lr': .01},
                        'log_sigma_params': {'lr': .001}}
     e_profile = {'class': TwoPhaseEntropProfile,
-                 'params': {'e_reduc': 0.0075}}
+                 'params': {'e_reduc': 0.00375}}
 
     critic_params = dict(network=MLP,
                          optimizer={'class': optim.Adam,
