@@ -17,7 +17,7 @@ if __name__ == '__main__':
     iteration = 1001
 
     env_id = 'HopperBulletEnv-v0'
-    log_name = 'Results/entropy/' + env_id + '/metricrl_c40'
+    log_name = 'Results/clus_heur/' + env_id + '/metricrl_c10hcovr'
 
     print(log_name)
 
@@ -29,7 +29,7 @@ if __name__ == '__main__':
 
     env.render(mode='human')
 
-    policy_path = os.path.join(log_name, 'net/network-5-' + str(iteration) + '.pth')
+    policy_path = os.path.join(log_name, 'net/network-1-' + str(iteration) + '.pth')
     policy_torch = torch.load(policy_path)
 
     obs = env.reset()

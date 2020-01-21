@@ -11,8 +11,9 @@ from mushroom_rl.utils.dataset import compute_J
 
 from metric_rl.proj_metricrl import ProjectionMetricRL
 from metric_rl.proj_swap_metricrl import ProjectionSwapMetricRL
+from metric_rl.proj_del_swap_metricrl import ProjectionDelSwapMetricRL
 from metric_rl.logger import generate_log_folder, save_parameters, Logger
-from metric_rl.rl_shared import TwoPhaseEntropProfile, MLP
+from metric_rl.rl_shared import TwoPhaseEntropProfile, MLP, SinglePhaseEntropProfile
 from joblib import Parallel, delayed
 
 from multiprocessing import Process
@@ -43,7 +44,7 @@ def experiment(env_id, n_clusters, horizon, seed, gamma=.99, n_epochs=1000, n_st
     if swap:
         params['a_cost_scale'] = a_cost_scale
         params['clus_sel'] = clus_sel
-        agent = ProjectionSwapMetricRL(mdp.info, **params)
+        agent = ProjectionDelSwapMetricRL(mdp.info, **params)
     else:
         agent = ProjectionMetricRL(mdp.info, **params)
 
@@ -106,7 +107,9 @@ def get_parameters(n_clusters):
                        'means_params': {'lr': .01},
                        'log_sigma_params': {'lr': .001}}
     e_profile = {'class': TwoPhaseEntropProfile,
-                 'params': {'e_reduc': 0.00375}}
+                 'params': {'e_reduc': 0.0075, 'e_thresh_mult': .5}}
+    # e_profile = {'class': SinglePhaseEntropProfile,
+    #              'params': {'e_reduc': 0.015}}
 
     critic_params = dict(network=MLP,
                          optimizer={'class': optim.Adam,
@@ -151,7 +154,7 @@ if __name__ == '__main__':
     log_name = generate_log_folder(env_id, 'projection_rand1k10_quadcost', str(n_clusters), True)
     print('log name', log_name)
     Parallel(n_jobs=n_jobs)(delayed(experiment)(env_id=env_id, n_clusters=n_clusters, horizon=horizon, gamma=gamma, n_epochs=10000, n_steps=3000, n_steps_per_fit=3000,
-               n_episodes_test=25, seed=seed, log_name=log_name, swap=True, clus_sel='covr_minpen') for seed in range(n_experiments))
+               n_episodes_test=1, seed=seed, log_name=log_name, swap=True, clus_sel='covr') for seed in range(n_experiments))
 
     # ps = []
     # for k in range(n_experiments):
