@@ -83,6 +83,9 @@ class MetricRegressor(nn.Module):
         dist = torch.sum((s[:, None, :] - self.centers[None, :, :]) ** 2, dim=-1)
         return torch.exp(-torch.exp(self._log_temp) * dist)
 
+    def to_clust_dist(self, s):
+        return torch.norm(s[:, None, :] - self.centers[None, :, :], dim=-1)
+
     @property
     def n_clusters(self):
         return len(self.centers)

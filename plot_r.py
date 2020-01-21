@@ -24,7 +24,6 @@ def plot_data(x, use_median):
         plt.plot(epochs, mean)
         plt.fill_between(epochs, mean - interval, mean + interval, alpha=.5)
 
-
 def create_figure(res_folder, subfolder, name, env, all_data, alg_labels, use_median=False):
     plt.figure()
     legend_lab = []
@@ -81,6 +80,7 @@ def load_data_acost(res_folder, env, alg_name, n_clusterss, a_cost_scales, nb_ru
     alg_labels = []
 
     for n_clusters in n_clusterss:
+
         for a_cost_scale in a_cost_scales:
             alg_label = 'c' + str(n_clusters) + 'a' + str(a_cost_scale)
             subfolder = alg_name + '_' + alg_label

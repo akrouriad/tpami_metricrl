@@ -15,6 +15,7 @@ from .gaussian_proj import lin_gauss_kl_proj, utils_from_chol, mean_diff
 from .rl_shared import get_targets
 from .policies import MetricPolicy
 from .cluster_randomized_optimization import randomized_swap_optimization
+from scipy.spatial.distance import pdist
 
 
 class ProjectionSwapMetricRL(Agent):
@@ -96,8 +97,11 @@ class ProjectionSwapMetricRL(Agent):
         else:
             # self._swap_clusters_adv(obs, act, adv_t, old)
             # self._swap_clusters_covr(obs, act, old)
-            self._random_swap_clusters(obs, old, act, adv_t)
-            self._update_mean_n_cov(obs, act, adv_t, old, entropy_lb)
+            swapped = self._random_swap_clusters(obs, old, act, adv_t)
+            if swapped:
+                self._update_mean_n_cov(obs, act, adv_t, old, entropy_lb)
+            else:
+                self._update_all_parameters(obs, act, adv_t, old, entropy_lb)
 
         # Actor Update
         self._full_batch_projection(obs, old, entropy_lb)
@@ -237,14 +241,18 @@ class ProjectionSwapMetricRL(Agent):
 
         w = self.policy.get_membership_t(obs)
 
-        cluster_h = torch.sum(w, dim=0)
+        cluster_h = -torch.sum(w, dim=0)
         cluster_h = cluster_h.detach().numpy().squeeze()
 
         if self._clus_sel == 'adv':
             sample_h = adv.detach().numpy().squeeze()
         else:
-            sample_h = torch.sum(w, dim=1)
-            sample_h = sample_h.detach().numpy().squeeze()
+            if self._clus_sel.startswith('old'):
+                sample_h = -torch.sum(w, dim=1)
+                sample_h = sample_h.detach().numpy().squeeze()
+            else:
+                sample_h = torch.mean(self.policy._regressor.to_clust_dist(obs), dim=1)
+                sample_h = sample_h.detach().numpy().squeeze()
 
         def bound_function(c_i):
             c_old = self.policy.get_cluster_centers()
@@ -253,7 +261,18 @@ class ProjectionSwapMetricRL(Agent):
             self.policy.set_cluster_centers(c_old)
             return kl_swap < self._max_kl
 
+        def evaluation_function_old(c_i):
+                c_old = self.policy.get_cluster_centers()
+                self.policy.set_cluster_centers(c_i)
+                w = self.policy.get_membership_t(obs)
+                self.policy.set_cluster_centers(c_old)
+                if self._clus_sel == 'old_min':
+                    return torch.min(torch.sum(w, dim=1)).item()
+                return torch.sum(w).item()
+
         def evaluation_function(c_i, clust_idxs=None, samp_idxs=None):
+            if self._clus_sel.startswith('old'):
+                return evaluation_function_old(c_i)
             if self._clus_sel == 'adv':
                 c_old = self.policy.get_cluster_centers()
                 cmeas_backup = self.policy._regressor.means.clone()
@@ -271,11 +290,15 @@ class ProjectionSwapMetricRL(Agent):
             else:
                 c_old = self.policy.get_cluster_centers()
                 self.policy.set_cluster_centers(c_i)
-                w = self.policy.get_membership_t(obs)
+                samp_to_clu_dist = -self.policy._regressor.to_clust_dist(obs)
                 self.policy.set_cluster_centers(c_old)
                 if self._clus_sel == 'min':
-                    return torch.min(torch.sum(w, dim=1)).item()
-                return torch.sum(w).item()
+                    return torch.min(torch.mean(samp_to_clu_dist, dim=1)).item()
+                elif self._clus_sel == 'covr':
+                    return torch.mean(samp_to_clu_dist).item()
+                # return torch.mean(samp_to_clu_dist).item() + np.mean(pdist(c_i))
+                else:
+                    return torch.mean(samp_to_clu_dist).item() + np.min(pdist(c_i))
 
         swapped = False
         while True:
@@ -303,6 +326,7 @@ class ProjectionSwapMetricRL(Agent):
             self._n_swaps = np.minimum(self._n_swaps, self.policy.n_clusters)
         else:
             print('Nb swapped clusters: 0. KL: 0.0')
+        return swapped
 
     def _update_all_parameters(self, obs, act, adv_t, old, entropy_lb):
         for epoch in range(self._n_epochs_per_fit):
