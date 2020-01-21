@@ -1,10 +1,10 @@
 import os
 import torch
 import numpy as np
+
 import pybullet_envs
 import pybullet
 import gym
-import time
 
 def rescale_joint(j, theta_r):
     theta_bar = 0.5 * (j.lowerLimit + j.upperLimit)
@@ -21,6 +21,10 @@ if __name__ == '__main__':
 
     print(log_name)
 
+
+    policy_path = os.path.join(log_name, 'net/network-5-' + str(iteration) + '.pth')
+    policy_torch = torch.load(policy_path)
+
     state_reconstruction_precision = 1e-7
 
     pybullet.connect(pybullet.DIRECT)
@@ -28,9 +32,6 @@ if __name__ == '__main__':
     env._max_episode_steps = np.inf
 
     env.render(mode='human')
-
-    policy_path = os.path.join(log_name, 'net/network-5-' + str(iteration) + '.pth')
-    policy_torch = torch.load(policy_path)
 
     obs = env.reset()
     done = False
