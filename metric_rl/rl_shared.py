@@ -5,11 +5,11 @@ import numpy as np
 
 
 class TwoPhaseEntropProfile:
-    def __init__(self, policy, e_reduc, e_thresh):
+    def __init__(self, policy, e_reduc, e_thresh_mult=.5):
         self.init_entropy = policy.entropy()
         self._policy = policy
         self._e_reduc = e_reduc
-        self._e_thresh = e_thresh
+        self._e_thresh = e_thresh_mult * self.init_entropy
         self._phase = 1
         self._iter = 0
 
@@ -20,6 +20,16 @@ class TwoPhaseEntropProfile:
             self._phase = 2
             self._iter += 1
             return self._e_thresh - self._iter * self._e_reduc
+
+
+class SinglePhaseEntropProfile:
+    def __init__(self, policy, e_reduc):
+        self._e_lb = policy.entropy()
+        self._e_reduc = e_reduc
+
+    def get_e_lb(self):
+        self._e_lb -= self._e_reduc
+        return self._e_lb
 
 
 class MLP(nn.Module):

@@ -10,7 +10,7 @@ local = False
 tu_id = 'ra61casa'
 home = '~/src/'
 
-experiment_name = 'clus_heur'
+experiment_name = 'swapdel'
 cluster_log_dir = '/work/scratch/' + tu_id + '/logs/' + experiment_name + '/'
 cluster_script_dir = home + 'metricrl/experiments'
 cluster_python_cmd = 'python'
@@ -30,9 +30,10 @@ n_steps_per_fit = 3000
 n_episodes_test = 5
 
 all_par = []
-# n_clusterss = [10, 20, 40]
-n_clusterss = [10]
-clus_sels = ['adv', 'old_covr', 'covr', 'covr_minpen']
+n_clusterss = [10, 20, 40]
+# n_clusterss = [10]
+# clus_sels = ['adv', 'old_covr', 'covr', 'covr_minpen']
+clus_sels = ['covr']
 alg_name = 'metricrl'
 
 # Creating parameters tables

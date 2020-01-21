@@ -18,10 +18,10 @@ from .cluster_randomized_optimization import randomized_swap_optimization
 from scipy.spatial.distance import pdist
 
 
-class ProjectionSwapMetricRL(Agent):
+class ProjectionDelSwapMetricRL(Agent):
     def __init__(self, mdp_info, policy_params, critic_params,
                  actor_optimizer, n_epochs_per_fit, batch_size,
-                 entropy_profile, max_kl, lam, n_samples=2000, critic_fit_params=None, a_cost_scale=0., clus_sel='covr'):
+                 entropy_profile, max_kl, lam, n_samples=1000, critic_fit_params=None, a_cost_scale=0., clus_sel='covr'):
         self._critic_fit_params = dict() if critic_fit_params is None else critic_fit_params
 
         policy = MetricPolicy(mdp_info.observation_space.shape,
@@ -41,6 +41,8 @@ class ProjectionSwapMetricRL(Agent):
 
         self._e_profile = entropy_profile['class'](policy, **entropy_profile['params'])
         self._max_kl = max_kl
+        self._kl_del = max_kl * .5
+        self._kl_cw_after_del = max_kl * .66
         self._lambda = lam
 
         self._a_cost_scale = a_cost_scale
@@ -88,18 +90,34 @@ class ProjectionSwapMetricRL(Agent):
                    **utils_from_chol(old_chol))
 
         entropy_lb = self._e_profile.get_e_lb()
+
         # optimize cw, mean and cov
-        if self._iter % 2:
+        if self._iter % 2 == 0:
             self._update_all_parameters(obs, act, adv_t, old, entropy_lb)
 
         # swap clusters and optimize mean and cov
         else:
-            # self._swap_clusters_adv(obs, act, adv_t, old)
-            # self._swap_clusters_covr(obs, act, old)
+            # deleted = self._cleanup(self._kl_del, obs, old, adv_t, act)
+            # if deleted:
+            #     self._increase_cw(deleted, self._kl_cw_after_del, obs, old)
+            # else:
+            #     swapped = self._random_swap_clusters(obs, old, act, adv_t)
+            # if deleted or swapped:
+            #     print('doing partial update')
+            #     self._update_mean_n_cov(obs, act, adv_t, old, entropy_lb)
+            # else:
+            #     print('doing full update')
+            #     self._update_all_parameters(obs, act, adv_t, old, entropy_lb)
             swapped = self._random_swap_clusters(obs, old, act, adv_t)
-            if swapped:
+            if mean_diff(self.policy.get_mean_t(obs), old['means'], old['prec']) < self._kl_del:
+                deleted = self._cleanup(self._kl_del, obs, old, adv_t, act)
+                if deleted:
+                    self._increase_cw(deleted, self._kl_cw_after_del, obs, old)
+            if swapped or deleted:
+                print('doing partial update')
                 self._update_mean_n_cov(obs, act, adv_t, old, entropy_lb)
             else:
+                print('doing full update')
                 self._update_all_parameters(obs, act, adv_t, old, entropy_lb)
 
         # Actor Update
@@ -152,6 +170,39 @@ class ProjectionSwapMetricRL(Agent):
 
                     for opt in self._actor_optimizers[1:]:
                         opt.step()
+
+    def _cleanup(self, kl_ub, obs, old_pol_data, adv, act):
+        cws = torch.sort(self.policy.get_cweights_t().clone())
+        deleted = []
+        for cw, k in zip(cws[0], cws[1]):
+            self.policy._regressor._c_weights.data[k] = 0.
+            if mean_diff(self.policy.get_mean_t(obs), old_pol_data['means'], old_pol_data['prec']) < kl_ub:
+                deleted.append(k)
+            else:
+                self.policy._regressor._c_weights.data[k] = cw
+        print('deleted {} clusters'.format(len(deleted)))
+        if deleted:
+            high_adv_idxs = torch.topk(adv, k=len(deleted), dim=0)[1]
+            for k, idx in zip(deleted, high_adv_idxs):
+                self.policy._regressor.centers[k] = obs[idx]
+                self.policy._regressor.means.data[k] = act[idx]
+
+        return deleted
+
+    def _increase_cw(self, deleted, kl_ub, obs, old_pol_data):
+        inc_lb = 0.
+        inc_ub = 10.
+        for k in range(5000):
+            inc = .5 * (inc_ub + inc_lb)
+            for cwi in deleted:
+                self.policy._regressor._c_weights.data[cwi] = inc
+            if mean_diff(self.policy.get_mean_t(obs), old_pol_data['means'], old_pol_data['prec']) < kl_ub:
+                inc_lb = inc
+            else:
+                inc_ub = inc
+        for cwi in deleted:
+            self.policy._regressor._c_weights.data[cwi] = inc_lb
+        print('increased cluster weights to {}'.format(inc_lb))
 
     def _swap_clusters_adv(self, obs, act, adv_t, old):
         base_perf = torch.mean(torch.exp(old['pol_dist'].log_prob(act)[:, None] - old['log_p']) * adv_t)  # almost zero

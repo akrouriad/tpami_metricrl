@@ -60,7 +60,7 @@ def replay(env_id, horizon, gamma, torch_policy, dt, n_episodes, seed):
 
 
 def load_policy(log_name, iteration):
-    policy_path = os.path.join(log_name, 'net/network-5-' + str(iteration) + '.pth')
+    policy_path = os.path.join(log_name, 'net/network-6-' + str(iteration) + '.pth')
     policy_torch = torch.load(policy_path)
 
     return policy_torch
@@ -72,14 +72,14 @@ if __name__ == '__main__':
     # horizon = 1600
     #env_id = 'AntBulletEnv-v0'
     #env_id = 'Walker2DBulletEnv-v0'
-    #env_id = 'HopperBulletEnv-v0'
-    env_id = 'HalfCheetahBulletEnv-v0'
+    env_id = 'HopperBulletEnv-v0'
+    # env_id = 'HalfCheetahBulletEnv-v0'
     horizon = 1000
     gamma = .99
 
-    log_name = 'Results/entropy/' + env_id + '/metricrl_c40'
+    log_name = 'Results/clus_heur/' + env_id + '/metricrl_c10hcovr'
 
     policy = load_policy(log_name, iteration=1001)
 
-    replay(env_id, horizon, gamma, policy, dt=0.,#1/30,
+    replay(env_id, horizon, gamma, policy, dt=1./30,
            n_episodes=10, seed=1)
