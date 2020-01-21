@@ -97,28 +97,28 @@ class ProjectionDelSwapMetricRL(Agent):
 
         # swap clusters and optimize mean and cov
         else:
-            deleted = self._cleanup(self._kl_del, obs, old, adv_t, act)
-            if deleted:
-                self._increase_cw(deleted, self._kl_cw_after_del, obs, old)
-            else:
-                swapped = self._random_swap_clusters(obs, old, act, adv_t)
-            if deleted or swapped:
-                print('doing partial update')
-                self._update_mean_n_cov(obs, act, adv_t, old, entropy_lb)
-            else:
-                print('doing full update')
-                self._update_all_parameters(obs, act, adv_t, old, entropy_lb)
-            # swapped = self._random_swap_clusters(obs, old, act, adv_t)
-            # if mean_diff(self.policy.get_mean_t(obs), old['means'], old['prec']) < self._kl_del:
-            #     deleted = self._cleanup(self._kl_del, obs, old, adv_t, act)
-            #     if deleted:
-            #         self._increase_cw(deleted, self._kl_cw_after_del, obs, old)
-            # if swapped or deleted:
+            # deleted = self._cleanup(self._kl_del, obs, old, adv_t, act)
+            # if deleted:
+            #     self._increase_cw(deleted, self._kl_cw_after_del, obs, old)
+            # else:
+            #     swapped = self._random_swap_clusters(obs, old, act, adv_t)
+            # if deleted or swapped:
             #     print('doing partial update')
             #     self._update_mean_n_cov(obs, act, adv_t, old, entropy_lb)
             # else:
             #     print('doing full update')
             #     self._update_all_parameters(obs, act, adv_t, old, entropy_lb)
+            swapped = self._random_swap_clusters(obs, old, act, adv_t)
+            if mean_diff(self.policy.get_mean_t(obs), old['means'], old['prec']) < self._kl_del:
+                deleted = self._cleanup(self._kl_del, obs, old, adv_t, act)
+                if deleted:
+                    self._increase_cw(deleted, self._kl_cw_after_del, obs, old)
+            if swapped or deleted:
+                print('doing partial update')
+                self._update_mean_n_cov(obs, act, adv_t, old, entropy_lb)
+            else:
+                print('doing full update')
+                self._update_all_parameters(obs, act, adv_t, old, entropy_lb)
 
         # Actor Update
         self._full_batch_projection(obs, old, entropy_lb)

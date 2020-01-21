@@ -146,8 +146,8 @@ if __name__ == '__main__':
     # Bipedal Walker
     # env_id = 'BipedalWalker-v2'
     # horizon = 1600
-    env_id = 'HopperBulletEnv-v0'
-    # env_id = 'HalfCheetahBulletEnv-v0'
+    # env_id = 'HopperBulletEnv-v0'
+    env_id = 'HalfCheetahBulletEnv-v0'
     horizon = 1000
     gamma = .99
 
