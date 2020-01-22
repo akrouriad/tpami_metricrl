@@ -21,7 +21,7 @@ from scipy.spatial.distance import pdist
 class ProjectionDelSwapMetricRL(Agent):
     def __init__(self, mdp_info, policy_params, critic_params,
                  actor_optimizer, n_epochs_per_fit, batch_size,
-                 entropy_profile, max_kl, lam, n_samples=1000, critic_fit_params=None, a_cost_scale=0., clus_sel='covr'):
+                 entropy_profile, max_kl, lam, n_samples=1000, critic_fit_params=None, a_cost_scale=0., clus_sel='covr', do_delete=False):
         self._critic_fit_params = dict() if critic_fit_params is None else critic_fit_params
 
         policy = MetricPolicy(mdp_info.observation_space.shape,
@@ -38,7 +38,7 @@ class ProjectionDelSwapMetricRL(Agent):
         self._batch_size = batch_size
 
         self._critic = Regressor(TorchApproximator, **critic_params)
-
+        self._do_delete = do_delete
         self._e_profile = entropy_profile['class'](policy, **entropy_profile['params'])
         self._max_kl = max_kl
         self._kl_del = max_kl * .5
@@ -91,6 +91,8 @@ class ProjectionDelSwapMetricRL(Agent):
 
         entropy_lb = self._e_profile.get_e_lb()
 
+        full_batch_proj = True
+
         # optimize cw, mean and cov
         if self._iter % 2 == 0:
             self._update_all_parameters(obs, act, adv_t, old, entropy_lb)
@@ -109,19 +111,25 @@ class ProjectionDelSwapMetricRL(Agent):
             #     print('doing full update')
             #     self._update_all_parameters(obs, act, adv_t, old, entropy_lb)
             swapped = self._random_swap_clusters(obs, old, act, adv_t)
-            if mean_diff(self.policy.get_mean_t(obs), old['means'], old['prec']) < self._kl_del:
+            deleted = []
+            if self._do_delete and mean_diff(self.policy.get_mean_t(obs), old['means'], old['prec']) < self._kl_del:
                 deleted = self._cleanup(self._kl_del, obs, old, adv_t, act)
                 if deleted:
                     self._increase_cw(deleted, self._kl_cw_after_del, obs, old)
             if swapped or deleted:
                 print('doing partial update')
+                old['intermediate_cmeans'] = self.policy.get_cmeans_t().clone().detach()
                 self._update_mean_n_cov(obs, act, adv_t, old, entropy_lb)
+                full_batch_proj = False
             else:
                 print('doing full update')
                 self._update_all_parameters(obs, act, adv_t, old, entropy_lb)
 
         # Actor Update
-        self._full_batch_projection(obs, old, entropy_lb)
+        if full_batch_proj:
+            self._full_batch_projection_all_par(obs, old, entropy_lb)
+        else:
+            self._full_batch_projection_partial(obs, old, entropy_lb)
 
         # next iter
         self._iter += 1
@@ -318,7 +326,7 @@ class ProjectionDelSwapMetricRL(Agent):
                 self.policy.set_cluster_centers(c_old)
                 if self._clus_sel == 'old_min':
                     return torch.min(torch.sum(w, dim=1)).item()
-                return torch.sum(w).item()
+                return torch.mean(torch.max(w, dim=1)[0]).item()
 
         def evaluation_function(c_i, clust_idxs=None, samp_idxs=None):
             if self._clus_sel.startswith('old'):
@@ -345,7 +353,7 @@ class ProjectionDelSwapMetricRL(Agent):
                 if self._clus_sel == 'min':
                     return torch.min(torch.mean(samp_to_clu_dist, dim=1)).item()
                 elif self._clus_sel == 'covr':
-                    return torch.mean(samp_to_clu_dist).item()
+                    return torch.mean(torch.max(samp_to_clu_dist, dim=1)[0]).item()
                 # return torch.mean(samp_to_clu_dist).item() + np.mean(pdist(c_i))
                 else:
                     return torch.mean(samp_to_clu_dist).item() + np.min(pdist(c_i))
@@ -411,7 +419,7 @@ class ProjectionDelSwapMetricRL(Agent):
                 for opt in self._actor_optimizers:
                     opt.step()
 
-    def _full_batch_projection(self, obs, old, entropy_lb):
+    def _full_batch_projection_all_par(self, obs, old, entropy_lb):
         # Get Basics stuff
         w = self.policy.get_unormalized_membership_t(obs)
         means = self.policy.get_intermediate_mean_t(obs, old['cmeans'])
@@ -433,3 +441,17 @@ class ProjectionDelSwapMetricRL(Agent):
 
         self.policy.set_cmeans_t(cmeans_nu)
         self.policy.set_chol_t(proj_d['chol'])
+
+    def _full_batch_projection_partial(self, obs, old, entropy_lb):
+        means = self.policy.get_mean_t(obs)
+        chol = self.policy.get_chol_t()
+
+        intermediate_means = self.policy.get_intermediate_mean_t(obs, old['intermediate_cmeans'])
+        proj_d = lin_gauss_kl_proj(means, chol, intermediate_means, old['means'],
+                                   old['cov'], old['prec'], old['logdetcov'], self._max_kl, entropy_lb)
+        nu = proj_d['eta_mean']
+        cmeans_nu = nu * self.policy.get_cmeans_t() + (1 - nu) * old['intermediate_cmeans']
+
+        self.policy.set_cmeans_t(cmeans_nu)
+        self.policy.set_chol_t(proj_d['chol'])
+

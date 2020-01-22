@@ -19,7 +19,7 @@ from joblib import Parallel, delayed
 from multiprocessing import Process
 
 def experiment(env_id, n_clusters, horizon, seed, gamma=.99, n_epochs=1000, n_steps=3000, n_steps_per_fit=3000, n_episodes_test=5, a_cost_scale=0.,
-               log_name=None, swap=True, clus_sel='covr'):
+               log_name=None, swap=True, clus_sel='covr', do_delete=False):
     print('Metric RL')
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -44,6 +44,7 @@ def experiment(env_id, n_clusters, horizon, seed, gamma=.99, n_epochs=1000, n_st
     if swap:
         params['a_cost_scale'] = a_cost_scale
         params['clus_sel'] = clus_sel
+        params['do_delete'] = do_delete
         agent = ProjectionDelSwapMetricRL(mdp.info, **params)
     else:
         agent = ProjectionMetricRL(mdp.info, **params)
@@ -141,7 +142,7 @@ if __name__ == '__main__':
     n_experiments = 1
     n_jobs = n_experiments
 
-    n_clusters = 10
+    n_clusters = 20
 
     # Bipedal Walker
     # env_id = 'BipedalWalker-v2'
@@ -150,11 +151,14 @@ if __name__ == '__main__':
     env_id = 'HalfCheetahBulletEnv-v0'
     horizon = 1000
     gamma = .99
+    clus_sel = 'covr'
+    do_delete = False
 
-    log_name = generate_log_folder(env_id, 'projection_rand1k10_quadcost', str(n_clusters), True)
+
+    log_name = generate_log_folder(env_id, 'projection_hcheetah', str(n_clusters), True)
     print('log name', log_name)
-    Parallel(n_jobs=n_jobs)(delayed(experiment)(env_id=env_id, n_clusters=n_clusters, horizon=horizon, gamma=gamma, n_epochs=10000, n_steps=3000, n_steps_per_fit=3000,
-               n_episodes_test=1, seed=seed, log_name=log_name, swap=True, clus_sel='covr') for seed in range(n_experiments))
+    Parallel(n_jobs=n_jobs)(delayed(experiment)(env_id=env_id, n_clusters=n_clusters, horizon=horizon, gamma=gamma, n_epochs=1000, n_steps=3000, n_steps_per_fit=3000,
+               n_episodes_test=1, seed=seed, log_name=log_name, swap=True, clus_sel=clus_sel, do_delete=do_delete) for seed in range(n_experiments))
 
     # ps = []
     # for k in range(n_experiments):
