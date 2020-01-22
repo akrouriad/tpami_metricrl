@@ -50,12 +50,12 @@ def get_image(mdp):
     return rgb_array
 
 
-def set_state_hopper(robot, robot_body):
+def set_state(robot, robot_body):
     z = cluster[0]
     v = cluster[3:6] / 0.3
     r = cluster[6]
     p = cluster[7]
-    robot.feet_contact[0] = cluster[-1]
+    robot.feet_contact[:] = cluster[-len(robot.foot_list):]
 
     joint_states = cluster[8:-1]
 
@@ -78,17 +78,19 @@ def set_state_hopper(robot, robot_body):
 
 
 if __name__ == '__main__':
+    #envs = ['HopperBulletEnv-v0', 'Walker2DBulletEnv-v0', 'HalfCheetahBulletEnv-v0', 'AntBulletEnv-v0']
     iteration = 1001
 
     exp_id = 'entropy'
-    env_id = 'HopperBulletEnv-v0'
-    alg_name = 'metricrl_c40'
+    env_id = 'AntBulletEnv-v0'
+    alg_name = 'metricrl'
+    n_clusters = 10
+    run_id = 5
 
-    log_name = os.path.join('Results', exp_id, env_id, alg_name)
+    log_name = os.path.join('Results', exp_id, env_id, alg_name + '_c' + str(n_clusters))
     print(log_name)
 
-
-    policy_path = os.path.join(log_name, 'net/network-5-' + str(iteration) + '.pth')
+    policy_path = os.path.join(log_name, 'net/network-' + str(run_id) + '-' + str(iteration) + '.pth')
     policy_torch = torch.load(policy_path)
 
     state_reconstruction_precision = 1e-7
@@ -119,7 +121,7 @@ if __name__ == '__main__':
         print('- Displaying cluster ', n)
         print(cluster)
 
-        set_state_hopper(robot, robot_body)
+        set_state(robot, robot_body)
 
         px = get_image(env)
         viewer.display(px)
