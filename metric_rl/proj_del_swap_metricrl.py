@@ -21,7 +21,8 @@ from scipy.spatial.distance import pdist
 class ProjectionDelSwapMetricRL(Agent):
     def __init__(self, mdp_info, policy_params, critic_params,
                  actor_optimizer, n_epochs_per_fit, batch_size,
-                 entropy_profile, max_kl, lam, n_samples=1000, critic_fit_params=None, a_cost_scale=0., clus_sel='covr', do_delete=False):
+                 entropy_profile, max_kl, lam, n_samples=1000, critic_fit_params=None, a_cost_scale=0., clus_sel='covr',
+                 do_delete=False, opt_temp=True):
         self._critic_fit_params = dict() if critic_fit_params is None else critic_fit_params
 
         policy = MetricPolicy(mdp_info.observation_space.shape,
@@ -34,6 +35,8 @@ class ProjectionDelSwapMetricRL(Agent):
                                   actor_optimizer['class']([policy._regressor.means], **actor_optimizer['means_params']),
                                   actor_optimizer['class']([policy._regressor._log_sigma], **actor_optimizer['log_sigma_params'])]
 
+        self._temp_optimizer = actor_optimizer['class']([policy._regressor._log_temp], lr=.01)
+
         self._n_epochs_per_fit = n_epochs_per_fit
         self._batch_size = batch_size
 
@@ -41,10 +44,12 @@ class ProjectionDelSwapMetricRL(Agent):
         self._do_delete = do_delete
         self._e_profile = entropy_profile['class'](policy, **entropy_profile['params'])
         self._max_kl = max_kl
+        self._kl_temp = max_kl * .25
         self._kl_del = max_kl * .5
         self._kl_cw_after_del = max_kl * .66
         self._lambda = lam
 
+        self._do_opt_temp = opt_temp
         self._a_cost_scale = a_cost_scale
         self._clus_sel = clus_sel
         self._n_swaps = float(policy.n_clusters)
@@ -110,13 +115,18 @@ class ProjectionDelSwapMetricRL(Agent):
             # else:
             #     print('doing full update')
             #     self._update_all_parameters(obs, act, adv_t, old, entropy_lb)
+            temp_change = False
+            if self._do_opt_temp:
+                temp_change = self._opt_temp(self._kl_temp, obs, act, adv_t, old)
             swapped = self._random_swap_clusters(obs, old, act, adv_t)
             deleted = []
             if self._do_delete and mean_diff(self.policy.get_mean_t(obs), old['means'], old['prec']) < self._kl_del:
                 deleted = self._cleanup(self._kl_del, obs, old, adv_t, act)
                 if deleted:
                     self._increase_cw(deleted, self._kl_cw_after_del, obs, old)
-            if swapped or deleted:
+            # if self._do_lsearch_temp and mean_diff(self.policy.get_mean_t(obs), old['means'], old['prec']) < self._kl_del:
+            #     temp_change = self._lsearch_temp(self._kl_del, obs, act, adv_t, old)
+            if swapped or deleted or temp_change:
                 print('doing partial update')
                 old['intermediate_cmeans'] = self.policy.get_cmeans_t().clone().detach()
                 self._update_mean_n_cov(obs, act, adv_t, old, entropy_lb)
@@ -200,7 +210,7 @@ class ProjectionDelSwapMetricRL(Agent):
     def _increase_cw(self, deleted, kl_ub, obs, old_pol_data):
         inc_lb = 0.
         inc_ub = 10.
-        for k in range(5000):
+        for k in range(2000):
             inc = .5 * (inc_ub + inc_lb)
             for cwi in deleted:
                 self.policy._regressor._c_weights.data[cwi] = inc
@@ -211,6 +221,91 @@ class ProjectionDelSwapMetricRL(Agent):
         for cwi in deleted:
             self.policy._regressor._c_weights.data[cwi] = inc_lb
         print('increased cluster weights to {}'.format(inc_lb))
+
+    def _opt_temp(self, kl_ub, obs, act, adv, old):
+        temp_change = False
+        temp_backup = self.policy._regressor._log_temp.clone()
+        for k in range(2000):
+            self._temp_optimizer.zero_grad()
+
+            w = self.policy.get_unormalized_membership_t(obs)
+            loss = -torch.mean(torch.max(w, dim=1)[0]) + torch.mean(torch.topk(w, k=2, dim=1)[0])
+            # new_pol_dist = self.policy.distribution_t(obs)
+            # loss = -torch.mean(torch.exp(new_pol_dist.log_prob(act)[:, None] - old['log_p']) * adv)
+
+            loss.backward()
+            self._temp_optimizer.step()
+            if mean_diff(self.policy.get_mean_t(obs), old['means'], old['prec']) > kl_ub:
+                self.policy._regressor._log_temp.data = temp_backup
+                break
+            else:
+                temp_backup = self.policy._regressor._log_temp.clone()
+                temp_change = True
+        if temp_change:
+            print('temp changed to {}'.format(self.policy._regressor._log_temp))
+        else:
+            print('temp unchanged')
+        return temp_change
+
+    def _lsearch_temp(self, kl_ub, obs, act, adv, old):
+        changed_temp = False
+        eval_budget = 2000
+        best_perf = base_perf = torch.mean(torch.exp(old['pol_dist'].log_prob(act)[:, None] - old['log_p']) * adv)  # almost zero
+        best_temp = base_temp = self.policy._regressor._log_temp.clone()
+        delta = .5
+
+        # searching ub
+        budget_up = eval_budget / 2
+        ub = base_temp.clone()
+        while eval_budget > budget_up:
+            ub += delta
+            self.policy._regressor._log_temp = ub
+            new_pol_dist = self.policy.distribution_t(obs)
+            new_perf = torch.mean(torch.exp(new_pol_dist.log_prob(act)[:, None] - old['log_p']) * adv)
+            if new_perf > best_perf and mean_diff(self.policy.get_mean_t(obs), old['means'], old['prec']) < kl_ub:
+                best_perf = new_perf
+                best_temp = ub
+                changed_temp = True
+            else:
+                break
+            eval_budget -= 1
+
+        # searching down
+        if not changed_temp:
+            lb = base_temp.clone()
+            while eval_budget:
+                lb -= delta
+                self.policy._regressor._log_temp = lb
+                new_pol_dist = self.policy.distribution_t(obs)
+                new_perf = torch.mean(torch.exp(new_pol_dist.log_prob(act)[:, None] - old['log_p']) * adv)
+                if new_perf > best_perf and mean_diff(self.policy.get_mean_t(obs), old['means'], old['prec']) < kl_ub:
+                    best_perf = new_perf
+                    best_temp = lb
+                    changed_temp = True
+                elif changed_temp:
+                    break
+                eval_budget -= 1
+        else:
+            lb = base_temp
+
+        for k in range(eval_budget):
+            t = (lb + ub) / 2
+            self.policy._regressor._log_temp = t
+            new_pol_dist = self.policy.distribution_t(obs)
+            new_perf = torch.mean(torch.exp(new_pol_dist.log_prob(act)[:, None] - old['log_p']) * adv)
+            if new_perf > best_perf and mean_diff(self.policy.get_mean_t(obs), old['means'], old['prec']) < kl_ub:
+                best_perf = new_perf
+                best_temp = t
+                changed_temp = True
+                ub = t
+            else:
+                lb = t
+        self.policy._regressor._log_temp = best_temp
+        if changed_temp:
+            print('log temp changed from {} to {}, perf inc'.format(base_temp, best_temp, best_perf - base_perf))
+        else:
+            print('temp unchanged')
+        return changed_temp
 
     def _swap_clusters_adv(self, obs, act, adv_t, old):
         base_perf = torch.mean(torch.exp(old['pol_dist'].log_prob(act)[:, None] - old['log_p']) * adv_t)  # almost zero
@@ -326,7 +421,10 @@ class ProjectionDelSwapMetricRL(Agent):
                 self.policy.set_cluster_centers(c_old)
                 if self._clus_sel == 'old_min':
                     return torch.min(torch.sum(w, dim=1)).item()
-                return torch.mean(torch.max(w, dim=1)[0]).item()
+                elif self._clus_sel == 'old_covr':
+                    return torch.mean(torch.max(w, dim=1)[0]).item()
+                else:
+                    return torch.mean(torch.max(w, dim=1)[0]).item() - torch.mean(torch.topk(w, k=2, dim=1)[0]).item()
 
         def evaluation_function(c_i, clust_idxs=None, samp_idxs=None):
             if self._clus_sel.startswith('old'):

@@ -19,7 +19,7 @@ from joblib import Parallel, delayed
 from multiprocessing import Process
 
 def experiment(env_id, n_clusters, horizon, seed, gamma=.99, n_epochs=1000, n_steps=3000, n_steps_per_fit=3000, n_episodes_test=5, a_cost_scale=0.,
-               log_name=None, swap=True, clus_sel='covr', do_delete=False):
+               log_name=None, swap=True, clus_sel='covr', do_delete=False, temp=1., opt_temp=True):
     print('Metric RL')
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -27,7 +27,7 @@ def experiment(env_id, n_clusters, horizon, seed, gamma=.99, n_epochs=1000, n_st
 
     logger = Logger(log_name, 'net')
 
-    params = get_parameters(n_clusters)
+    params = get_parameters(n_clusters, temp)
     save_parameters(log_name, params)
 
     mdp = GymFixed(env_id, horizon, gamma)
@@ -45,6 +45,7 @@ def experiment(env_id, n_clusters, horizon, seed, gamma=.99, n_epochs=1000, n_st
         params['a_cost_scale'] = a_cost_scale
         params['clus_sel'] = clus_sel
         params['do_delete'] = do_delete
+        params['opt_temp'] = opt_temp
         agent = ProjectionDelSwapMetricRL(mdp.info, **params)
     else:
         agent = ProjectionMetricRL(mdp.info, **params)
@@ -98,10 +99,10 @@ def experiment(env_id, n_clusters, horizon, seed, gamma=.99, n_epochs=1000, n_st
     # core.evaluate(n_episodes=5, render=True)
 
 
-def get_parameters(n_clusters):
+def get_parameters(n_clusters, temp):
 
     policy_params = dict(n_clusters=n_clusters,
-                         std_0=1.)
+                         std_0=1., temp=temp)
 
     actor_optimizer = {'class': optim.Adam,
                        'cw_params': {'lr': .01},
@@ -151,14 +152,16 @@ if __name__ == '__main__':
     env_id = 'HalfCheetahBulletEnv-v0'
     horizon = 1000
     gamma = .99
-    clus_sel = 'covr'
+    temp = 1.
+    clus_sel = 'old_covr'
     do_delete = False
+    opt_temp = True
 
 
     log_name = generate_log_folder(env_id, 'projection_hcheetah', str(n_clusters), True)
     print('log name', log_name)
     Parallel(n_jobs=n_jobs)(delayed(experiment)(env_id=env_id, n_clusters=n_clusters, horizon=horizon, gamma=gamma, n_epochs=1000, n_steps=3000, n_steps_per_fit=3000,
-               n_episodes_test=1, seed=seed, log_name=log_name, swap=True, clus_sel=clus_sel, do_delete=do_delete) for seed in range(n_experiments))
+               n_episodes_test=1, seed=seed, log_name=log_name, swap=True, clus_sel=clus_sel, do_delete=do_delete, temp=temp, opt_temp=opt_temp) for seed in range(n_experiments))
 
     # ps = []
     # for k in range(n_experiments):

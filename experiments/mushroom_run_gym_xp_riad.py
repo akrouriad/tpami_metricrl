@@ -10,7 +10,7 @@ local = False
 tu_id = 'ra61casa'
 home = '~/src/'
 
-experiment_name = 'heurndel'
+experiment_name = 'tempopt'
 cluster_log_dir = '/work/scratch/' + tu_id + '/logs/' + experiment_name + '/'
 cluster_script_dir = home + 'metricrl/experiments'
 cluster_python_cmd = 'python'
@@ -32,9 +32,11 @@ n_episodes_test = 5
 
 all_par = []
 n_clusterss = [10, 20, 40]
+opt_temp = True
 # n_clusterss = [10]
 # clus_sels = ['adv', 'old_covr', 'covr', 'covr_minpen']
-clus_sels = ['old_covr', 'covr']
+# clus_sels = ['old_covr', 'covr']
+clus_sels = ['old_covr', 'old_covr_yetnew']
 clus_dels = [True, False]
 alg_name = 'metricrl'
 
@@ -43,14 +45,14 @@ for env in envs:
     for n_clusters in n_clusterss:
         for clus_sel in clus_sels:
             for clus_del in clus_dels:
-                postfix = 'c' + str(n_clusters) + 'h' + clus_sel + 'd' + str(clus_del)
+                postfix = 'c' + str(n_clusters) + 'h' + clus_sel + 'd' + str(clus_del) + 'Opt'
                 log_name = generate_log_folder(name=env, algorithm_name=alg_name, postfix=postfix,
                                                timestamp=False, base_folder=local_log_dir if local else cluster_log_dir)
 
                 for run in range(nb_runs):
                     params = {'env_id': env, 'n_clusters': n_clusters, 'horizon': horizon, 'seed': run, 'log_name': log_name,
                               'n_epochs': n_epochs, 'n_steps': n_steps, 'n_steps_per_fit': n_steps_per_fit,
-                              'n_episodes_test': n_episodes_test, 'clus_sel': clus_sel, 'do_delete': clus_del}
+                              'n_episodes_test': n_episodes_test, 'clus_sel': clus_sel, 'do_delete': clus_del, 'opt_temp': opt_temp}
                     all_par.append(params)
 
 # Creating launch scripts

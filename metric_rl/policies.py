@@ -21,7 +21,7 @@ class Grad1Abs(torch.autograd.Function):
 
 
 class MetricRegressor(nn.Module):
-    def __init__(self, input_shape, output_shape, n_clusters, std_0, **kwargs):
+    def __init__(self, input_shape, output_shape, n_clusters, std_0, temp=1., **kwargs):
         super().__init__()
 
         s_dim = input_shape[0]
@@ -31,7 +31,7 @@ class MetricRegressor(nn.Module):
         self._c_weights = nn.Parameter(torch.zeros(n_clusters))
         self._log_sigma = nn.Parameter(torch.ones(a_dim) * np.log(std_0))
 
-        self._log_temp = torch.tensor(0.)
+        self._log_temp = nn.Parameter(torch.log(torch.tensor(temp)))
 
         self._cluster_count = 0
         self._n_clusters = n_clusters
@@ -92,9 +92,9 @@ class MetricRegressor(nn.Module):
 
 
 class MetricPolicy(TorchPolicy):
-    def __init__(self, input_shape, output_shape, n_clusters, std_0, use_cuda=False):
+    def __init__(self, input_shape, output_shape, n_clusters, std_0, temp=1., use_cuda=False):
         self._a_dim = output_shape[0]
-        self._regressor = MetricRegressor(input_shape, output_shape, n_clusters, std_0)
+        self._regressor = MetricRegressor(input_shape, output_shape, n_clusters, std_0, temp=temp)
 
         super().__init__(use_cuda)
 
