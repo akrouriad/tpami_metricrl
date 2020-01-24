@@ -49,15 +49,16 @@ for env in envs:
     for n_clusters in n_clusterss:
         for clus_sel in clus_sels:
             for clus_del in clus_dels:
-                postfix = 'c' + str(n_clusters) + 'h' + clus_sel + 'd' + str(clus_del) + 'Opt'
-                log_name = generate_log_folder(name=env, algorithm_name=alg_name, postfix=postfix,
-                                               timestamp=False, base_folder=local_log_dir if local else cluster_log_dir)
+                for temp in temps:
+                    postfix = 'c' + str(n_clusters) + 'h' + clus_sel + 'd' + str(clus_del) + 't' + str(temp)
+                    log_name = generate_log_folder(name=env, algorithm_name=alg_name, postfix=postfix,
+                                                   timestamp=False, base_folder=local_log_dir if local else cluster_log_dir)
 
-                for run in range(nb_runs):
-                    params = {'env_id': env, 'n_clusters': n_clusters, 'horizon': horizon, 'seed': run, 'log_name': log_name,
-                              'n_epochs': n_epochs, 'n_steps': n_steps, 'n_steps_per_fit': n_steps_per_fit,
-                              'n_episodes_test': n_episodes_test, 'clus_sel': clus_sel, 'do_delete': clus_del, 'opt_temp': opt_temp}
-                    all_par.append(params)
+                    for run in range(nb_runs):
+                        params = {'env_id': env, 'n_clusters': n_clusters, 'horizon': horizon, 'seed': run, 'log_name': log_name,
+                                  'n_epochs': n_epochs, 'n_steps': n_steps, 'n_steps_per_fit': n_steps_per_fit,
+                                  'n_episodes_test': n_episodes_test, 'clus_sel': clus_sel, 'do_delete': clus_del, 'opt_temp': opt_temp, 'temp': temp}
+                        all_par.append(params)
 
 # Creating launch scripts
 slurms = []
