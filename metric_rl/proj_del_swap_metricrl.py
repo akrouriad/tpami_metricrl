@@ -21,7 +21,7 @@ from scipy.spatial.distance import pdist
 class ProjectionDelSwapMetricRL(Agent):
     def __init__(self, mdp_info, policy_params, critic_params,
                  actor_optimizer, n_epochs_per_fit, batch_size,
-                 entropy_profile, max_kl, lam, n_samples=1000, critic_fit_params=None, a_cost_scale=0., clus_sel='covr',
+                 entropy_profile, max_kl, lam, n_samples=2000, critic_fit_params=None, a_cost_scale=0., clus_sel='covr',
                  do_delete=False, opt_temp=True):
         self._critic_fit_params = dict() if critic_fit_params is None else critic_fit_params
 
@@ -35,7 +35,8 @@ class ProjectionDelSwapMetricRL(Agent):
                                   actor_optimizer['class']([policy._regressor.means], **actor_optimizer['means_params']),
                                   actor_optimizer['class']([policy._regressor._log_sigma], **actor_optimizer['log_sigma_params'])]
 
-        self._temp_optimizer = actor_optimizer['class']([policy._regressor._log_temp], lr=.01)
+        self._temp_lr = self._temp_base_lr = .01
+        self._temp_optimizer = actor_optimizer['class']([policy._regressor._log_temp], lr=self._temp_lr)
 
         self._n_epochs_per_fit = n_epochs_per_fit
         self._batch_size = batch_size
@@ -225,11 +226,18 @@ class ProjectionDelSwapMetricRL(Agent):
     def _opt_temp(self, kl_ub, obs, act, adv, old):
         temp_change = False
         temp_backup = self.policy._regressor._log_temp.clone()
-        for k in range(2000):
+        nb_success = 0
+        self._temp_lr = self._temp_base_lr
+        for param_group in self._temp_optimizer.param_groups:
+            param_group['lr'] = self._temp_lr
+        for k in range(500):
             self._temp_optimizer.zero_grad()
 
             w = self.policy.get_unormalized_membership_t(obs)
-            loss = -torch.mean(torch.max(w, dim=1)[0]) + torch.mean(torch.topk(w, k=2, dim=1)[0])
+            loss = -torch.mean(torch.max(w, dim=1)[0]) + torch.mean(torch.topk(w, k=3, dim=1)[0])
+            # topk = torch.topk(w, k=3, dim=1)[0]
+            # loss = -torch.mean(topk[:, 0] - torch.mean(topk[:, 1:]))
+
             # new_pol_dist = self.policy.distribution_t(obs)
             # loss = -torch.mean(torch.exp(new_pol_dist.log_prob(act)[:, None] - old['log_p']) * adv)
 
@@ -237,10 +245,20 @@ class ProjectionDelSwapMetricRL(Agent):
             self._temp_optimizer.step()
             if mean_diff(self.policy.get_mean_t(obs), old['means'], old['prec']) > kl_ub:
                 self.policy._regressor._log_temp.data = temp_backup
-                break
+                self._temp_lr *= .8
+                for param_group in self._temp_optimizer.param_groups:
+                    param_group['lr'] = self._temp_lr
+                nb_success = 0
             else:
                 temp_backup = self.policy._regressor._log_temp.clone()
                 temp_change = True
+                nb_success += 1
+                if nb_success > 100:
+                    nb_success = 0
+                    self._temp_lr *= 1.25
+                    for param_group in self._temp_optimizer.param_groups:
+                        param_group['lr'] = self._temp_lr
+        print('lr:', self._temp_lr)
         if temp_change:
             print('temp changed to {}'.format(self.policy._regressor._log_temp))
         else:
@@ -424,7 +442,10 @@ class ProjectionDelSwapMetricRL(Agent):
                 elif self._clus_sel == 'old_covr':
                     return torch.mean(torch.max(w, dim=1)[0]).item()
                 else:
-                    return torch.mean(torch.max(w, dim=1)[0]).item() - torch.mean(torch.topk(w, k=2, dim=1)[0]).item()
+                    return torch.mean(torch.max(w, dim=1)[0]).item() - torch.mean(torch.topk(w, k=3, dim=1)[0]).item()
+                    # topk = torch.topk(w, k=3, dim=1)[0]
+                    # return torch.mean(topk[:, 0] - torch.mean(topk[:, 1:]))
+
 
         def evaluation_function(c_i, clust_idxs=None, samp_idxs=None):
             if self._clus_sel.startswith('old'):

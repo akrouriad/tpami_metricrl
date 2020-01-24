@@ -10,13 +10,13 @@ local = False
 tu_id = 'ra61casa'
 home = '~/src/'
 
-experiment_name = 'tempopt'
+experiment_name = 'fixedtemp'
 cluster_log_dir = '/work/scratch/' + tu_id + '/logs/' + experiment_name + '/'
 cluster_script_dir = home + 'metricrl/experiments'
 cluster_python_cmd = 'python'
 
 local_python_cmd = 'python'
-local_log_dir = './log' + experiment_name + '/'
+local_log_dir = experiment_name + '/'
 
 base = '_metricrl'
 # envs = ['BipedalWalker-v2', 'RoboschoolHopper-v1', 'RoboschoolInvertedDoublePendulum-v1', 'RoboschoolWalker2d-v1', 'RoboschoolHalfCheetah-v1', 'RoboschoolAnt-v1', 'MountainCarContinuous-v0']
@@ -32,12 +32,16 @@ n_episodes_test = 5
 
 all_par = []
 n_clusterss = [10, 20, 40]
-opt_temp = True
+# n_clusterss = [40]
+opt_temp = False
 # n_clusterss = [10]
 # clus_sels = ['adv', 'old_covr', 'covr', 'covr_minpen']
 # clus_sels = ['old_covr', 'covr']
-clus_sels = ['old_covr', 'old_covr_yetnew']
-clus_dels = [True, False]
+# clus_sels = ['old_covr', 'old_covr_yetnew', 'covr']
+clus_sels = ['old_covr_yetnew']
+# clus_dels = [True, False]
+clus_dels = [True]
+temps = [1., .33, .1]
 alg_name = 'metricrl'
 
 # Creating parameters tables
@@ -58,7 +62,7 @@ for env in envs:
 # Creating launch scripts
 slurms = []
 nb_proc_per_act = 1
-nb_act = 11
+nb_act = 16
 nb_proc = nb_act * nb_proc_per_act
 for k, i in enumerate(range(0, len(all_par), nb_act)):
     # create python script

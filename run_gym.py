@@ -152,10 +152,10 @@ if __name__ == '__main__':
     env_id = 'HalfCheetahBulletEnv-v0'
     horizon = 1000
     gamma = .99
-    temp = 1.
-    clus_sel = 'old_covr'
-    do_delete = False
-    opt_temp = True
+    temp = .3
+    clus_sel = 'old_covr_yetnew'
+    do_delete = True
+    opt_temp = False
 
 
     log_name = generate_log_folder(env_id, 'projection_hcheetah', str(n_clusters), True)

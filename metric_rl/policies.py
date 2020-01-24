@@ -31,6 +31,7 @@ class MetricRegressor(nn.Module):
         self._c_weights = nn.Parameter(torch.zeros(n_clusters))
         self._log_sigma = nn.Parameter(torch.ones(a_dim) * np.log(std_0))
 
+        # self._log_temp = nn.Parameter(torch.log(torch.tensor(temp)) * torch.ones_like(self._c_weights))
         self._log_temp = nn.Parameter(torch.log(torch.tensor(temp)))
 
         self._cluster_count = 0
