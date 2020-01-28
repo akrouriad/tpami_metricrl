@@ -102,7 +102,7 @@ def experiment(env_id, n_clusters, horizon, seed, gamma=.99, n_epochs=1000, n_st
 def get_parameters(n_clusters, temp):
 
     policy_params = dict(n_clusters=n_clusters,
-                         std_0=1., temp=temp)
+                         std_0=1., temp=temp, max_cmean=1.8)
 
     actor_optimizer = {'class': optim.Adam,
                        'cw_params': {'lr': .01},
@@ -140,7 +140,7 @@ def get_parameters(n_clusters, temp):
 
 
 if __name__ == '__main__':
-    n_experiments = 11
+    n_experiments = 1
     n_jobs = n_experiments
 
     n_clusters = 40
@@ -153,7 +153,7 @@ if __name__ == '__main__':
     env_id = 'Walker2DBulletEnv-v0'
     horizon = 1000
     gamma = .99
-    temp = .33
+    temp = 1.
     clus_sel = 'old_covr_yetnew'
     do_delete = True
     opt_temp = False

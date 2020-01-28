@@ -71,6 +71,7 @@ class ProjectionDelSwapMetricRL(Agent):
         # Get tensors
         obs = to_float_tensor(x, self._use_cuda)
         act = to_float_tensor(u,  self._use_cuda)
+        act_raw = to_float_tensor(np.arctanh(u), self._use_cuda)
         v, adv = get_targets(self._critic, x, xn, r, absorbing, last, self.mdp_info.gamma, self._lambda,
                              prediction='min')
         adv = (adv - np.mean(adv)) / (np.std(adv) + 1e-8)
@@ -91,7 +92,7 @@ class ProjectionDelSwapMetricRL(Agent):
                    cmeans=self.policy.get_cmeans_t().clone().detach(),
                    means=self.policy.get_mean_t(obs).detach(),
                    pol_dist=self.policy.distribution_t(obs),
-                   log_p=self.policy.log_prob_t(obs, act).clone().detach(),
+                   log_p=self.policy.log_prob_t(obs, act, act_raw).clone().detach(),
                    membership=self.policy.get_membership_t(obs).detach(),
                    **utils_from_chol(old_chol))
 
@@ -101,7 +102,7 @@ class ProjectionDelSwapMetricRL(Agent):
 
         # optimize cw, mean and cov
         if self._iter % 2 == 0:
-            self._update_all_parameters(obs, act, adv_t, old, entropy_lb)
+            self._update_all_parameters(obs, act, act_raw, adv_t, old, entropy_lb)
 
         # swap clusters and optimize mean and cov
         else:
@@ -130,11 +131,11 @@ class ProjectionDelSwapMetricRL(Agent):
             if swapped or deleted or temp_change:
                 print('doing partial update')
                 old['intermediate_cmeans'] = self.policy.get_cmeans_t().clone().detach()
-                self._update_mean_n_cov(obs, act, adv_t, old, entropy_lb)
+                self._update_mean_n_cov(obs, act, act_raw, adv_t, old, entropy_lb)
                 full_batch_proj = False
             else:
                 print('doing full update')
-                self._update_all_parameters(obs, act, adv_t, old, entropy_lb)
+                self._update_all_parameters(obs, act, act_raw, adv_t, old, entropy_lb)
 
         # Actor Update
         if full_batch_proj:
@@ -160,15 +161,17 @@ class ProjectionDelSwapMetricRL(Agent):
                 self.policy._regressor.centers[k] = obs[ba]
                 # self.policy._regressor.means.data[k] = to_float_tensor(np.arctanh(np.clip(act[ba].detach().numpy(), -.99, .99)), self._use_cuda)
                 self.policy._regressor.means.data[k] = act[ba]
+                self.policy.set_cmeans_t(self.policy._regressor.means)
+
                 ba_ind += 1
         tqdm.write('added {} clusters'.format(ba_ind))
 
-    def _update_mean_n_cov(self, obs, act, adv_t, old, entropy_lb):
+    def _update_mean_n_cov(self, obs, act, act_raw, adv_t, old, entropy_lb):
         # Compute mean projection (nu)
         intermediate_means = self.policy.get_mean_t(obs).detach()
         for epoch in range(self._n_epochs_per_fit):
-            for obs_i, act_i, wq_i, old_means_i, old_log_p_i, adv_i, intermediate_means_i in \
-                    minibatch_generator(self._batch_size, obs, act, old['w'], old['means'], old['log_p'], adv_t, intermediate_means):
+            for obs_i, act_i, act_raw_i, wq_i, old_means_i, old_log_p_i, adv_i, intermediate_means_i in \
+                    minibatch_generator(self._batch_size, obs, act, act_raw, old['w'], old['means'], old['log_p'], adv_t, intermediate_means):
 
                 if mean_diff(intermediate_means_i, old_means_i, old['prec']) < self._max_kl - 1e-6:
                     for opt in self._actor_optimizers[1:]:
@@ -184,12 +187,14 @@ class ProjectionDelSwapMetricRL(Agent):
                     proj_distrib = torch.distributions.MultivariateNormal(proj_d['means'], scale_tril=proj_d['chol'])
 
                     # Compute loss
-                    prob_ratio = torch.exp(proj_distrib.log_prob(act_i)[:, None] - old_log_p_i)
+                    prob_ratio = torch.exp(MetricPolicy.log_prob_from_distrib(proj_distrib, act_i, act_raw_i) - old_log_p_i)
                     loss = -torch.mean(prob_ratio * adv_i)
                     loss.backward()
 
                     for opt in self._actor_optimizers[1:]:
                         opt.step()
+
+                    self.policy.set_cmeans_t(self.policy.get_cmeans_t())
 
     def _cleanup(self, kl_ub, obs, old_pol_data, adv, act):
         cws = torch.sort(self.policy.get_cweights_t().clone())
@@ -206,6 +211,7 @@ class ProjectionDelSwapMetricRL(Agent):
             for k, idx in zip(deleted, high_adv_idxs):
                 self.policy._regressor.centers[k] = obs[idx]
                 self.policy._regressor.means.data[k] = act[idx]
+                self.policy.set_cmeans_t(self.policy._regressor.means)
 
         return deleted
 
@@ -267,106 +273,110 @@ class ProjectionDelSwapMetricRL(Agent):
         return temp_change
 
     def _lsearch_temp(self, kl_ub, obs, act, adv, old):
-        changed_temp = False
-        eval_budget = 2000
-        best_perf = base_perf = torch.mean(torch.exp(old['pol_dist'].log_prob(act)[:, None] - old['log_p']) * adv)  # almost zero
-        best_temp = base_temp = self.policy._regressor._log_temp.clone()
-        delta = .5
-
-        # searching ub
-        budget_up = eval_budget / 2
-        ub = base_temp.clone()
-        while eval_budget > budget_up:
-            ub += delta
-            self.policy._regressor._log_temp = ub
-            new_pol_dist = self.policy.distribution_t(obs)
-            new_perf = torch.mean(torch.exp(new_pol_dist.log_prob(act)[:, None] - old['log_p']) * adv)
-            if new_perf > best_perf and mean_diff(self.policy.get_mean_t(obs), old['means'], old['prec']) < kl_ub:
-                best_perf = new_perf
-                best_temp = ub
-                changed_temp = True
-            else:
-                break
-            eval_budget -= 1
-
-        # searching down
-        if not changed_temp:
-            lb = base_temp.clone()
-            while eval_budget:
-                lb -= delta
-                self.policy._regressor._log_temp = lb
-                new_pol_dist = self.policy.distribution_t(obs)
-                new_perf = torch.mean(torch.exp(new_pol_dist.log_prob(act)[:, None] - old['log_p']) * adv)
-                if new_perf > best_perf and mean_diff(self.policy.get_mean_t(obs), old['means'], old['prec']) < kl_ub:
-                    best_perf = new_perf
-                    best_temp = lb
-                    changed_temp = True
-                elif changed_temp:
-                    break
-                eval_budget -= 1
-        else:
-            lb = base_temp
-
-        for k in range(eval_budget):
-            t = (lb + ub) / 2
-            self.policy._regressor._log_temp = t
-            new_pol_dist = self.policy.distribution_t(obs)
-            new_perf = torch.mean(torch.exp(new_pol_dist.log_prob(act)[:, None] - old['log_p']) * adv)
-            if new_perf > best_perf and mean_diff(self.policy.get_mean_t(obs), old['means'], old['prec']) < kl_ub:
-                best_perf = new_perf
-                best_temp = t
-                changed_temp = True
-                ub = t
-            else:
-                lb = t
-        self.policy._regressor._log_temp = best_temp
-        if changed_temp:
-            print('log temp changed from {} to {}, perf inc'.format(base_temp, best_temp, best_perf - base_perf))
-        else:
-            print('temp unchanged')
-        return changed_temp
+        print('dead code, lsearch temp')
+        exit()
+        # changed_temp = False
+        # eval_budget = 2000
+        # best_perf = base_perf = torch.mean(torch.exp(old['pol_dist'].log_prob(act)[:, None] - old['log_p']) * adv)  # almost zero
+        # best_temp = base_temp = self.policy._regressor._log_temp.clone()
+        # delta = .5
+        #
+        # # searching ub
+        # budget_up = eval_budget / 2
+        # ub = base_temp.clone()
+        # while eval_budget > budget_up:
+        #     ub += delta
+        #     self.policy._regressor._log_temp = ub
+        #     new_pol_dist = self.policy.distribution_t(obs)
+        #     new_perf = torch.mean(torch.exp(new_pol_dist.log_prob(act)[:, None] - old['log_p']) * adv)
+        #     if new_perf > best_perf and mean_diff(self.policy.get_mean_t(obs), old['means'], old['prec']) < kl_ub:
+        #         best_perf = new_perf
+        #         best_temp = ub
+        #         changed_temp = True
+        #     else:
+        #         break
+        #     eval_budget -= 1
+        #
+        # # searching down
+        # if not changed_temp:
+        #     lb = base_temp.clone()
+        #     while eval_budget:
+        #         lb -= delta
+        #         self.policy._regressor._log_temp = lb
+        #         new_pol_dist = self.policy.distribution_t(obs)
+        #         new_perf = torch.mean(torch.exp(new_pol_dist.log_prob(act)[:, None] - old['log_p']) * adv)
+        #         if new_perf > best_perf and mean_diff(self.policy.get_mean_t(obs), old['means'], old['prec']) < kl_ub:
+        #             best_perf = new_perf
+        #             best_temp = lb
+        #             changed_temp = True
+        #         elif changed_temp:
+        #             break
+        #         eval_budget -= 1
+        # else:
+        #     lb = base_temp
+        #
+        # for k in range(eval_budget):
+        #     t = (lb + ub) / 2
+        #     self.policy._regressor._log_temp = t
+        #     new_pol_dist = self.policy.distribution_t(obs)
+        #     new_perf = torch.mean(torch.exp(new_pol_dist.log_prob(act)[:, None] - old['log_p']) * adv)
+        #     if new_perf > best_perf and mean_diff(self.policy.get_mean_t(obs), old['means'], old['prec']) < kl_ub:
+        #         best_perf = new_perf
+        #         best_temp = t
+        #         changed_temp = True
+        #         ub = t
+        #     else:
+        #         lb = t
+        # self.policy._regressor._log_temp = best_temp
+        # if changed_temp:
+        #     print('log temp changed from {} to {}, perf inc'.format(base_temp, best_temp, best_perf - base_perf))
+        # else:
+        #     print('temp unchanged')
+        # return changed_temp
 
     def _swap_clusters_adv(self, obs, act, adv_t, old):
-        base_perf = torch.mean(torch.exp(old['pol_dist'].log_prob(act)[:, None] - old['log_p']) * adv_t)  # almost zero
-
-        high_adv_idxs = torch.argsort(adv_t, dim=0, descending=True)
-        remaining_idx = [k for k in range(self.policy._regressor._n_clusters)]
-        state_centers = self.policy._regressor.centers.clone().numpy()
-        for idxidx, idx in enumerate(high_adv_idxs):
-            # finding closest state
-            dist_to_centers = -np.sum((state_centers - obs[idx].detach().numpy()) ** 2, axis=1)
-            closest_idxs = np.argsort(dist_to_centers)
-            for closest_idx in closest_idxs:
-                closest = remaining_idx[closest_idx]
-                state_backup = self.policy._regressor.centers[closest].clone()
-                # swap and check KL
-                self.policy._regressor.centers[closest] = obs[idx]
-                kl_swap = mean_diff(self.policy.get_mean_t(obs), old['means'], old['prec'])
-                if kl_swap < self._max_kl:
-                    # check increase of the objective after state swapping
-                    # ... and cluster center swapping?
-                    action_backup = self.policy._regressor.means[closest].clone()
-                    self.policy._regressor.means.data[closest] = act[idx]
-                    new_pol_dist = self.policy.distribution_t(obs)
-                    new_perf = torch.mean(torch.exp(new_pol_dist.log_prob(act)[:, None] - old['log_p']) * adv_t)
-                    self.policy._regressor.means.data[closest] = action_backup
-                    if new_perf >= base_perf:
-                    # if True:
-                        # keep if kl under thresh and objective did not decrease
-                        remaining_idx.pop(closest_idx)
-                        state_centers = np.delete(state_centers, closest_idx, axis=0)
-                        break
-                    else:
-                        # revert old cluster center
-                        self.policy._regressor.centers[closest] = state_backup
-                else:
-                    # revert old cluster center
-                    self.policy._regressor.centers[closest] = state_backup
-            if len(remaining_idx) == 0:
-                break
-        new_pol_dist = self.policy.distribution_t(obs)
-        logging_kl = torch.mean(torch.distributions.kl.kl_divergence(new_pol_dist, old['pol_dist']))
-        print('Nb swapped clusters: {}. KL: {}'.format(self.policy._regressor._n_clusters - len(remaining_idx), logging_kl))
+        print('dead code, swap clusters')
+        exit()
+        # base_perf = torch.mean(torch.exp(old['pol_dist'].log_prob(act)[:, None] - old['log_p']) * adv_t)  # almost zero
+        #
+        # high_adv_idxs = torch.argsort(adv_t, dim=0, descending=True)
+        # remaining_idx = [k for k in range(self.policy._regressor._n_clusters)]
+        # state_centers = self.policy._regressor.centers.clone().numpy()
+        # for idxidx, idx in enumerate(high_adv_idxs):
+        #     # finding closest state
+        #     dist_to_centers = -np.sum((state_centers - obs[idx].detach().numpy()) ** 2, axis=1)
+        #     closest_idxs = np.argsort(dist_to_centers)
+        #     for closest_idx in closest_idxs:
+        #         closest = remaining_idx[closest_idx]
+        #         state_backup = self.policy._regressor.centers[closest].clone()
+        #         # swap and check KL
+        #         self.policy._regressor.centers[closest] = obs[idx]
+        #         kl_swap = mean_diff(self.policy.get_mean_t(obs), old['means'], old['prec'])
+        #         if kl_swap < self._max_kl:
+        #             # check increase of the objective after state swapping
+        #             # ... and cluster center swapping?
+        #             action_backup = self.policy._regressor.means[closest].clone()
+        #             self.policy._regressor.means.data[closest] = act[idx]
+        #             new_pol_dist = self.policy.distribution_t(obs)
+        #             new_perf = torch.mean(torch.exp(new_pol_dist.log_prob(act)[:, None] - old['log_p']) * adv_t)
+        #             self.policy._regressor.means.data[closest] = action_backup
+        #             if new_perf >= base_perf:
+        #             # if True:
+        #                 # keep if kl under thresh and objective did not decrease
+        #                 remaining_idx.pop(closest_idx)
+        #                 state_centers = np.delete(state_centers, closest_idx, axis=0)
+        #                 break
+        #             else:
+        #                 # revert old cluster center
+        #                 self.policy._regressor.centers[closest] = state_backup
+        #         else:
+        #             # revert old cluster center
+        #             self.policy._regressor.centers[closest] = state_backup
+        #     if len(remaining_idx) == 0:
+        #         break
+        # new_pol_dist = self.policy.distribution_t(obs)
+        # logging_kl = torch.mean(torch.distributions.kl.kl_divergence(new_pol_dist, old['pol_dist']))
+        # print('Nb swapped clusters: {}. KL: {}'.format(self.policy._regressor._n_clusters - len(remaining_idx), logging_kl))
 
     def _swap_clusters_covr(self, obs, act, old):
         base_perf = torch.mean(old['membership'])
@@ -452,19 +462,21 @@ class ProjectionDelSwapMetricRL(Agent):
             if self._clus_sel.startswith('old'):
                 return evaluation_function_old(c_i)
             if self._clus_sel == 'adv':
-                c_old = self.policy.get_cluster_centers()
-                cmeas_backup = self.policy._regressor.means.clone()
-
-                self.policy.set_cluster_centers(c_i)
-                if clust_idxs is not None:
-                    for k, si in zip(clust_idxs, samp_idxs):
-                        self.policy._regressor.means.data[k] = act[si]
-                prob_ratio = torch.exp(self.policy.log_prob_t(obs, act) - old['log_p'])
-                fitness = torch.mean(prob_ratio * adv).item()
-
-                self.policy.set_cluster_centers(c_old)
-                self.policy._regressor.means.data = cmeas_backup
-                return fitness
+                print('dead code, adv evaluation_function')
+                exit()
+                # c_old = self.policy.get_cluster_centers()
+                # cmeas_backup = self.policy._regressor.means.clone()
+                #
+                # self.policy.set_cluster_centers(c_i)
+                # if clust_idxs is not None:
+                #     for k, si in zip(clust_idxs, samp_idxs):
+                #         self.policy._regressor.means.data[k] = act[si]
+                # prob_ratio = torch.exp(self.policy.log_prob_t(obs, act) - old['log_p'])
+                # fitness = torch.mean(prob_ratio * adv).item()
+                #
+                # self.policy.set_cluster_centers(c_old)
+                # self.policy._regressor.means.data = cmeas_backup
+                # return fitness
             else:
                 c_old = self.policy.get_cluster_centers()
                 self.policy.set_cluster_centers(c_i)
@@ -506,10 +518,10 @@ class ProjectionDelSwapMetricRL(Agent):
             print('Nb swapped clusters: 0. KL: 0.0')
         return swapped
 
-    def _update_all_parameters(self, obs, act, adv_t, old, entropy_lb):
+    def _update_all_parameters(self, obs, act, act_raw, adv_t, old, entropy_lb):
         for epoch in range(self._n_epochs_per_fit):
-            for obs_i, act_i, wq_i, old_means_i, old_log_p_i, adv_i in \
-                    minibatch_generator(self._batch_size, obs, act, old['w'], old['means'], old['log_p'], adv_t):
+            for obs_i, act_i, act_raw_i, wq_i, old_means_i, old_log_p_i, adv_i in \
+                    minibatch_generator(self._batch_size, obs, act, act_raw, old['w'], old['means'], old['log_p'], adv_t):
                 for opt in self._actor_optimizers:
                     opt.zero_grad()
 
@@ -532,12 +544,13 @@ class ProjectionDelSwapMetricRL(Agent):
                 proj_distrib = torch.distributions.MultivariateNormal(proj_d['means'], scale_tril=proj_d['chol'])
 
                 # Compute loss
-                prob_ratio = torch.exp(proj_distrib.log_prob(act_i)[:, None] - old_log_p_i)
+                prob_ratio = torch.exp(MetricPolicy.log_prob_from_distrib(proj_distrib, act_i, act_raw_i) - old_log_p_i)
                 loss = -torch.mean(prob_ratio * adv_i)
                 loss.backward()
 
                 for opt in self._actor_optimizers:
                     opt.step()
+                self.policy.set_cmeans_t(self.policy.get_cmeans_t())
 
     def _full_batch_projection_all_par(self, obs, old, entropy_lb):
         # Get Basics stuff
