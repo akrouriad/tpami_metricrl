@@ -72,15 +72,16 @@ if __name__ == '__main__':
     # env_id = 'BipedalWalker-v2'
     # horizon = 1600
     # env_id = 'AntBulletEnv-v0'
-    # env_id = 'Walker2DBulletEnv-v0'
-    env_id = 'HopperBulletEnv-v0'
+    env_id = 'Walker2DBulletEnv-v0'
+    # env_id = 'HopperBulletEnv-v0'
     # env_id = 'HalfCheetahBulletEnv-v0'
     horizon = 1000
     gamma = .99
 
-    log_name = 'Results/heurndel/' + env_id + '/metricrl_c40hcovrdTrue'
+    log_name = 'Results/fixedtemp/' + env_id + '/metricrl_c40hold_covr_yetnewdTruet0.33'
 
     policy = load_policy(log_name, iteration=1001)
 
     replay(env_id, horizon, gamma, policy, dt=1./30,
-           n_episodes=10, seed=0)
+           n_episodes=10, seed=7)
+

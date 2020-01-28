@@ -103,7 +103,8 @@ class MetricPolicy(TorchPolicy):
             self._regressor.cuda()
 
     def draw_action_t(self, state):
-        return self.distribution_t(state).sample()
+        # return self.distribution_t(state).sample()
+        return torch.tanh(self.distribution_t(state).sample())
 
     def log_prob_t(self, state, action):
         return self.distribution_t(state).log_prob(action)[:, None]
@@ -148,6 +149,7 @@ class MetricPolicy(TorchPolicy):
         return self._regressor.get_cmeans()
 
     def set_cmeans_t(self, means):
+        # self._regressor.means.data = to_float_tensor(np.arctanh(np.clip(means.detach().numpy(), -.99, .99)), self.use_cuda)
         self._regressor.means.data = means
 
     def get_unormalized_membership_t(self, s):

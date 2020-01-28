@@ -158,6 +158,7 @@ class ProjectionDelSwapMetricRL(Agent):
             if cw == 0.:
                 ba = oadv[ba_ind][0]
                 self.policy._regressor.centers[k] = obs[ba]
+                # self.policy._regressor.means.data[k] = to_float_tensor(np.arctanh(np.clip(act[ba].detach().numpy(), -.99, .99)), self._use_cuda)
                 self.policy._regressor.means.data[k] = act[ba]
                 ba_ind += 1
         tqdm.write('added {} clusters'.format(ba_ind))
