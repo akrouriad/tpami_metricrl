@@ -10,7 +10,7 @@ local = False
 tu_id = 'ra61casa'
 home = '~/src/'
 
-experiment_name = 'fixedtemp'
+experiment_name = 'covrexp'
 cluster_log_dir = '/work/scratch/' + tu_id + '/logs/' + experiment_name + '/'
 cluster_script_dir = home + 'metricrl/experiments'
 cluster_python_cmd = 'python'
@@ -21,6 +21,7 @@ local_log_dir = experiment_name + '/'
 base = '_metricrl'
 # envs = ['BipedalWalker-v2', 'RoboschoolHopper-v1', 'RoboschoolInvertedDoublePendulum-v1', 'RoboschoolWalker2d-v1', 'RoboschoolHalfCheetah-v1', 'RoboschoolAnt-v1', 'MountainCarContinuous-v0']
 envs = ['HopperBulletEnv-v0', 'Walker2DBulletEnv-v0', 'HalfCheetahBulletEnv-v0', 'AntBulletEnv-v0']
+temp_per_envs = [1., 1., .33, .33]
 # envs = ['HalfCheetahBulletEnv-v0']
 
 horizon = 1000
@@ -38,27 +39,27 @@ opt_temp = False
 # clus_sels = ['adv', 'old_covr', 'covr', 'covr_minpen']
 # clus_sels = ['old_covr', 'covr']
 # clus_sels = ['old_covr', 'old_covr_yetnew', 'covr']
-clus_sels = ['old_covr_yetnew']
+# clus_sels = ['old_covr_yetnew']
+clus_sels = ['covr_exp']
 # clus_dels = [True, False]
 clus_dels = [True]
-temps = [1., .33, .1]
+# temps = [1., .33, .1]
 alg_name = 'metricrl'
 
 # Creating parameters tables
-for env in envs:
+for env, temp_per_env in zip(envs, temp_per_envs):
     for n_clusters in n_clusterss:
         for clus_sel in clus_sels:
             for clus_del in clus_dels:
-                for temp in temps:
-                    postfix = 'c' + str(n_clusters) + 'h' + clus_sel + 'd' + str(clus_del) + 't' + str(temp)
-                    log_name = generate_log_folder(name=env, algorithm_name=alg_name, postfix=postfix,
-                                                   timestamp=False, base_folder=local_log_dir if local else cluster_log_dir)
+                postfix = 'c' + str(n_clusters) + 'h' + clus_sel + 'd' + str(clus_del) + 't' + str(temp_per_env)
+                log_name = generate_log_folder(name=env, algorithm_name=alg_name, postfix=postfix,
+                                               timestamp=False, base_folder=local_log_dir if local else cluster_log_dir)
 
-                    for run in range(nb_runs):
-                        params = {'env_id': env, 'n_clusters': n_clusters, 'horizon': horizon, 'seed': run, 'log_name': log_name,
-                                  'n_epochs': n_epochs, 'n_steps': n_steps, 'n_steps_per_fit': n_steps_per_fit,
-                                  'n_episodes_test': n_episodes_test, 'clus_sel': clus_sel, 'do_delete': clus_del, 'opt_temp': opt_temp, 'temp': temp}
-                        all_par.append(params)
+                for run in range(nb_runs):
+                    params = {'env_id': env, 'n_clusters': n_clusters, 'horizon': horizon, 'seed': run, 'log_name': log_name,
+                              'n_epochs': n_epochs, 'n_steps': n_steps, 'n_steps_per_fit': n_steps_per_fit,
+                              'n_episodes_test': n_episodes_test, 'clus_sel': clus_sel, 'do_delete': clus_del, 'opt_temp': opt_temp, 'temp': temp_per_env}
+                    all_par.append(params)
 
 # Creating launch scripts
 slurms = []
