@@ -10,7 +10,7 @@ local = False
 tu_id = 'ra61casa'
 home = '~/src/'
 
-experiment_name = 'covrexp'
+experiment_name = 'squash'
 cluster_log_dir = '/work/scratch/' + tu_id + '/logs/' + experiment_name + '/'
 cluster_script_dir = home + 'metricrl/experiments'
 cluster_python_cmd = 'python'
@@ -27,8 +27,8 @@ temp_per_envs = [1., 1., .33, .33]
 horizon = 1000
 nb_runs = 11
 n_epochs = 1000
-n_steps = 3000
-n_steps_per_fit = 3000
+n_steps = 3008
+n_steps_per_fit = 3008
 n_episodes_test = 5
 
 all_par = []
@@ -39,10 +39,11 @@ opt_temp = False
 # clus_sels = ['adv', 'old_covr', 'covr', 'covr_minpen']
 # clus_sels = ['old_covr', 'covr']
 # clus_sels = ['old_covr', 'old_covr_yetnew', 'covr']
-# clus_sels = ['old_covr_yetnew']
-clus_sels = ['covr_exp']
+clus_sels = ['old_covr_yetnew']
+# clus_sels = ['covr_exp']
 # clus_dels = [True, False]
 clus_dels = [True]
+squash = True
 # temps = [1., .33, .1]
 alg_name = 'metricrl'
 
@@ -51,14 +52,15 @@ for env, temp_per_env in zip(envs, temp_per_envs):
     for n_clusters in n_clusterss:
         for clus_sel in clus_sels:
             for clus_del in clus_dels:
-                postfix = 'c' + str(n_clusters) + 'h' + clus_sel + 'd' + str(clus_del) + 't' + str(temp_per_env)
+                postfix = 'c' + str(n_clusters) + 'h' + clus_sel + 'd' + str(clus_del) + 't' + str(temp_per_env) + 's' + str(squash)
                 log_name = generate_log_folder(name=env, algorithm_name=alg_name, postfix=postfix,
                                                timestamp=False, base_folder=local_log_dir if local else cluster_log_dir)
 
                 for run in range(nb_runs):
                     params = {'env_id': env, 'n_clusters': n_clusters, 'horizon': horizon, 'seed': run, 'log_name': log_name,
                               'n_epochs': n_epochs, 'n_steps': n_steps, 'n_steps_per_fit': n_steps_per_fit,
-                              'n_episodes_test': n_episodes_test, 'clus_sel': clus_sel, 'do_delete': clus_del, 'opt_temp': opt_temp, 'temp': temp_per_env}
+                              'n_episodes_test': n_episodes_test, 'clus_sel': clus_sel, 'do_delete': clus_del,
+                              'opt_temp': opt_temp, 'temp': temp_per_env, 'squash': squash}
                     all_par.append(params)
 
 # Creating launch scripts
@@ -117,7 +119,7 @@ for p in ps:
 #SBATCH -n 1"""
             for c in code.splitlines():
                 print(c, file=file)
-            print("#SBATCH -C avx2", file=file)
+            # print("#SBATCH -C avx2", file=file)
             print("#SBATCH -c " + str(nb_proc), file=file)
             print("cd \nsource .bash_profile", file=file)
             print("cd " + cluster_script_dir, file=file)
