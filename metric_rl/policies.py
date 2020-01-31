@@ -94,7 +94,7 @@ class MetricRegressor(nn.Module):
 
 
 class MetricPolicy(TorchPolicy):
-    def __init__(self, input_shape, output_shape, n_clusters, std_0, temp=1., max_cmean=10, use_cuda=False, squash=False):
+    def __init__(self, input_shape, output_shape, n_clusters, std_0, temp=1., max_cmean=10, use_cuda=False, squash='none'):
         self._a_dim = output_shape[0]
         self._regressor = MetricRegressor(input_shape, output_shape, n_clusters, std_0, temp=temp, max_cmean=max_cmean)
         self._squash = squash
@@ -105,14 +105,24 @@ class MetricPolicy(TorchPolicy):
             self._regressor.cuda()
 
     def draw_action_t(self, state):
-        if self._squash:
+        if self._squash == 'tanh':
             return torch.tanh(self.distribution_t(state).sample())
+        elif self._squash == 'clip':
+            return torch.clamp(self.distribution_t(state).sample(), -self._regressor._max_cmean, self._regressor._max_cmean)
         return self.distribution_t(state).sample()
 
     def log_prob_t(self, state, action, action_raw=None):
         if action_raw is not None:
             log_prob = self.distribution_t(state).log_prob(action_raw)[:, None]
             log_prob -= torch.log1p(-action.pow(2)).sum(dim=1, keepdim=True)
+        elif self._squash == 'clip':
+            mu, chol_sigma = self._regressor(state)
+            dist = torch.distributions.Normal(mu, scale=torch.diag(chol_sigma))
+            log_prob = dist.log_prob(action)
+            cdfp = 1 - dist.cdf(self._regressor._max_cmean * torch.ones_like(action))
+            cdfn = dist.cdf(-self._regressor._max_cmean * torch.ones_like(action))
+            log_prob[action == self._regressor._max_cmean] = torch.log(cdfp[action == self._regressor._max_cmean] + 1e-16)
+            log_prob[action == -self._regressor._max_cmean] = torch.log(cdfn[action == -self._regressor._max_cmean] + 1e-16)
         else:
             log_prob = self.distribution_t(state).log_prob(action)[:, None]
         return log_prob
@@ -166,7 +176,7 @@ class MetricPolicy(TorchPolicy):
         return self._regressor.get_cmeans()
 
     def set_cmeans_t(self, means):
-        if self._squash:
+        if self._squash == 'tanh' or self._squash == 'clip':
             self._regressor.means.data = torch.clamp(means, -self._regressor._max_cmean, self._regressor._max_cmean)
         else:
             self._regressor.means.data = means

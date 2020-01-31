@@ -10,7 +10,7 @@ local = False
 tu_id = 'ra61casa'
 home = '~/src/'
 
-experiment_name = 'squash'
+experiment_name = 'clip'
 cluster_log_dir = '/work/scratch/' + tu_id + '/logs/' + experiment_name + '/'
 cluster_script_dir = home + 'metricrl/experiments'
 cluster_python_cmd = 'python'
@@ -43,7 +43,8 @@ clus_sels = ['old_covr_yetnew']
 # clus_sels = ['covr_exp']
 # clus_dels = [True, False]
 clus_dels = [True]
-squash = True
+squash = 'clip'
+max_cmean = 1.
 # temps = [1., .33, .1]
 alg_name = 'metricrl'
 
@@ -52,7 +53,7 @@ for env, temp_per_env in zip(envs, temp_per_envs):
     for n_clusters in n_clusterss:
         for clus_sel in clus_sels:
             for clus_del in clus_dels:
-                postfix = 'c' + str(n_clusters) + 'h' + clus_sel + 'd' + str(clus_del) + 't' + str(temp_per_env) + 's' + str(squash)
+                postfix = 'c' + str(n_clusters) + 'h' + clus_sel + 'd' + str(clus_del) + 't' + str(temp_per_env) + 's' + squash
                 log_name = generate_log_folder(name=env, algorithm_name=alg_name, postfix=postfix,
                                                timestamp=False, base_folder=local_log_dir if local else cluster_log_dir)
 
@@ -60,7 +61,7 @@ for env, temp_per_env in zip(envs, temp_per_envs):
                     params = {'env_id': env, 'n_clusters': n_clusters, 'horizon': horizon, 'seed': run, 'log_name': log_name,
                               'n_epochs': n_epochs, 'n_steps': n_steps, 'n_steps_per_fit': n_steps_per_fit,
                               'n_episodes_test': n_episodes_test, 'clus_sel': clus_sel, 'do_delete': clus_del,
-                              'opt_temp': opt_temp, 'temp': temp_per_env, 'squash': squash}
+                              'opt_temp': opt_temp, 'temp': temp_per_env, 'squash': squash, 'max_cmean': max_cmean}
                     all_par.append(params)
 
 # Creating launch scripts

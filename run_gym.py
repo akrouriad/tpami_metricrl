@@ -19,7 +19,7 @@ from joblib import Parallel, delayed
 from multiprocessing import Process
 
 def experiment(env_id, n_clusters, horizon, seed, gamma=.99, n_epochs=1000, n_steps=3000, n_steps_per_fit=3000, n_episodes_test=5, a_cost_scale=0.,
-               log_name=None, swap=True, clus_sel='covr', do_delete=True, temp=1., opt_temp=False, squash=False, max_cmean=10):
+               log_name=None, swap=True, clus_sel='covr', do_delete=True, temp=1., opt_temp=False, squash='none', max_cmean=1.):
     print('Metric RL')
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -159,8 +159,9 @@ if __name__ == '__main__':
     clus_sel = 'covr_exp'
     do_delete = True
     opt_temp = False
-    squash = False
-    max_cmean = 10.
+    # squash = 'tanh'
+    squash = 'clip'
+    max_cmean = 1.
 
     log_name = generate_log_folder(env_id, 'tanhtemp_covrexp', str(n_clusters), True)
     print('log name', log_name)
