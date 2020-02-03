@@ -12,8 +12,8 @@ home = '~/src/'
 
 #!
 # experiment_name = 'final_big'
-# experiment_name = 'final_medium'
-experiment_name = 'final_small'
+experiment_name = 'final_medium_h2'
+# experiment_name = 'final_small'
 
 cluster_log_dir = '/work/scratch/' + tu_id + '/logs/' + experiment_name + '/'
 cluster_script_dir = home + 'metricrl/experiments'
@@ -24,26 +24,26 @@ local_log_dir = experiment_name + '/'
 
 #!
 # base = '_fbig'
-# base = '_fmed'
-base = '_fsml'
+base = '_fmed_h2'
+# base = '_fsml'
 
 #!
 # envs = ['HumanoidBulletEnv-v0']
-# envs = ['HopperBulletEnv-v0', 'Walker2DBulletEnv-v0', 'HalfCheetahBulletEnv-v0', 'AntBulletEnv-v0']
-envs = ['MountainCarContinuous-v0', 'BipedalWalker-v2', 'InvertedDoublePendulumBulletEnv-v0']
+envs = ['HopperBulletEnv-v0', 'Walker2DBulletEnv-v0', 'HalfCheetahBulletEnv-v0', 'AntBulletEnv-v0']
+# envs = ['MountainCarContinuous-v0', 'BipedalWalker-v2', 'InvertedDoublePendulumBulletEnv-v0']
 
 #!
 # temp_per_envs = [.33]
-# temp_per_envs = [1., 1., .33, .33]
-temp_per_envs = [1., 1., 1.]
+temp_per_envs = [1., 1., .33, .33]
+# temp_per_envs = [1., 1., 1.]
 
 horizon = 1000
-nb_runs = 25
+nb_runs = 11
 
 #!
 # n_epochs = 3500
-# n_epochs = 1000
-n_epochs = 500
+n_epochs = 1000
+# n_epochs = 500
 
 n_steps = 3008
 n_steps_per_fit = 3008
@@ -53,8 +53,8 @@ all_par = []
 
 #!
 # n_clusterss = [20, 40, 80]
-# n_clusterss = [10, 20, 40]
-n_clusterss = [5, 10, 20]
+n_clusterss = [10, 20, 40]
+# n_clusterss = [5, 10, 20]
 
 opt_temp = False
 # n_clusterss = [10]
@@ -62,7 +62,7 @@ opt_temp = False
 # clus_sels = ['old_covr', 'covr']
 # clus_sels = ['old_covr', 'old_covr_yetnew', 'covr']
 # clus_sels = ['old_covr_yetnew']
-clus_sels = ['covr_exp']
+clus_sels = ['covr_exp2']
 # clus_dels = [True, False]
 clus_dels = [True]
 squash = 'none'
