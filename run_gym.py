@@ -144,6 +144,8 @@ if __name__ == '__main__':
     n_experiments = 1
     n_jobs = n_experiments
 
+    # n_clusters = 10
+    # n_clusters = 20
     n_clusters = 40
 
     # Bipedal Walker
@@ -151,10 +153,11 @@ if __name__ == '__main__':
     # horizon = 1600
     # env_id = 'HopperBulletEnv-v0'
     # env_id = 'HalfCheetahBulletEnv-v0'
-    env_id = 'Walker2DBulletEnv-v0'
+    # env_id = 'AntBulletEnv-v0'
+    env_id = 'HumanoidBulletEnv-v0'
     horizon = 1000
     gamma = .99
-    temp = 1.
+    temp = .33
     # clus_sel = 'old_covr_yetnew'
     clus_sel = 'covr_exp'
     do_delete = True
@@ -162,7 +165,7 @@ if __name__ == '__main__':
     squash = False
     max_cmean = 10.
 
-    log_name = generate_log_folder(env_id, 'tanhtemp_covrexp', str(n_clusters), True)
+    log_name = generate_log_folder(env_id, 'lower_std', str(n_clusters), True)
     print('log name', log_name)
     Parallel(n_jobs=n_jobs)(delayed(experiment)(env_id=env_id, n_clusters=n_clusters, horizon=horizon, gamma=gamma, n_epochs=1000, n_steps=3000, n_steps_per_fit=3000,
                n_episodes_test=1, seed=seed, log_name=log_name, swap=True, clus_sel=clus_sel, do_delete=do_delete, temp=temp, opt_temp=opt_temp, squash=squash, max_cmean=max_cmean) for seed in range(n_experiments))

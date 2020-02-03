@@ -10,7 +10,7 @@ local = False
 tu_id = 'ra61casa'
 home = '~/src/'
 
-experiment_name = 'squash'
+experiment_name = 'final_medium'
 cluster_log_dir = '/work/scratch/' + tu_id + '/logs/' + experiment_name + '/'
 cluster_script_dir = home + 'metricrl/experiments'
 cluster_python_cmd = 'python'
@@ -18,14 +18,14 @@ cluster_python_cmd = 'python'
 local_python_cmd = 'python'
 local_log_dir = experiment_name + '/'
 
-base = '_metricrl'
+base = '_fmed'
 # envs = ['BipedalWalker-v2', 'RoboschoolHopper-v1', 'RoboschoolInvertedDoublePendulum-v1', 'RoboschoolWalker2d-v1', 'RoboschoolHalfCheetah-v1', 'RoboschoolAnt-v1', 'MountainCarContinuous-v0']
 envs = ['HopperBulletEnv-v0', 'Walker2DBulletEnv-v0', 'HalfCheetahBulletEnv-v0', 'AntBulletEnv-v0']
 temp_per_envs = [1., 1., .33, .33]
 # envs = ['HalfCheetahBulletEnv-v0']
 
 horizon = 1000
-nb_runs = 11
+nb_runs = 25
 n_epochs = 1000
 n_steps = 3008
 n_steps_per_fit = 3008
@@ -39,11 +39,11 @@ opt_temp = False
 # clus_sels = ['adv', 'old_covr', 'covr', 'covr_minpen']
 # clus_sels = ['old_covr', 'covr']
 # clus_sels = ['old_covr', 'old_covr_yetnew', 'covr']
-clus_sels = ['old_covr_yetnew']
-# clus_sels = ['covr_exp']
+# clus_sels = ['old_covr_yetnew']
+clus_sels = ['covr_exp']
 # clus_dels = [True, False]
 clus_dels = [True]
-squash = True
+squash = False
 # temps = [1., .33, .1]
 alg_name = 'metricrl'
 
