@@ -10,8 +10,9 @@ local = False
 tu_id = 'ra61casa'
 home = '~/src/'
 
+# experiment_name = 'final_big'
 # experiment_name = 'final_medium'
-experiment_name = 'final_big'
+experiment_name = 'final_small'
 cluster_log_dir = '/work/scratch/' + tu_id + '/logs/' + experiment_name + '/'
 cluster_script_dir = home + 'metricrl/experiments'
 cluster_python_cmd = 'python'
@@ -19,25 +20,30 @@ cluster_python_cmd = 'python'
 local_python_cmd = 'python'
 local_log_dir = experiment_name + '/'
 
-base = '_fbig'
+# base = '_fbig'
+# base = '_fmed'
+base = '_fsml'
 # envs = ['BipedalWalker-v2', 'RoboschoolHopper-v1', 'RoboschoolInvertedDoublePendulum-v1', 'RoboschoolWalker2d-v1', 'RoboschoolHalfCheetah-v1', 'RoboschoolAnt-v1', 'MountainCarContinuous-v0']
+# envs = ['HumanoidBulletEnv-v0']
 # envs = ['HopperBulletEnv-v0', 'Walker2DBulletEnv-v0', 'HalfCheetahBulletEnv-v0', 'AntBulletEnv-v0']
-envs = ['HumanoidBulletEnv-v0']
+envs = ['MountainCarContinuous-v0', 'BipedalWalker-v2', 'InvertedDoublePendulumBulletEnv-v0']
+# temp_per_envs = [.33]
 # temp_per_envs = [1., 1., .33, .33]
-temp_per_envs = [.33]
+temp_per_envs = [1., 1., 1.]
 # envs = ['HalfCheetahBulletEnv-v0']
 
 horizon = 1000
 nb_runs = 25
 # n_epochs = 1000
-n_epochs = 3500
+n_epochs = 500
 n_steps = 3008
 n_steps_per_fit = 3008
 n_episodes_test = 5
 
 all_par = []
+# n_clusterss = [20, 40, 80]
 # n_clusterss = [10, 20, 40]
-n_clusterss = [20, 40, 80]
+n_clusterss = [5, 10, 20]
 # n_clusterss = [40]
 opt_temp = False
 # n_clusterss = [10]
@@ -116,7 +122,7 @@ for p in ps:
 
             code = """\
 # request computation time hh:mm:ss
-#SBATCH -t 48:00:00
+#SBATCH -t 24:00:00
 
 # request virtual memory in MB per core
 #SBATCH --mem-per-cpu=2000

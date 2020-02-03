@@ -146,7 +146,7 @@ if __name__ == '__main__':
 
     # n_clusters = 10
     # n_clusters = 20
-    n_clusters = 40
+    n_clusters = 5
 
     # Bipedal Walker
     # env_id = 'BipedalWalker-v2'
@@ -154,10 +154,13 @@ if __name__ == '__main__':
     # env_id = 'HopperBulletEnv-v0'
     # env_id = 'HalfCheetahBulletEnv-v0'
     # env_id = 'AntBulletEnv-v0'
-    env_id = 'HumanoidBulletEnv-v0'
+    # env_id = 'HumanoidBulletEnv-v0'
+    # env_id = 'MountainCarContinuous-v0'
+    env_id = 'InvertedDoublePendulumBulletEnv-v0'
+    # env_id = 'BipedalWalker-v2'
     horizon = 1000
     gamma = .99
-    temp = .33
+    temp = 1.
     # clus_sel = 'old_covr_yetnew'
     clus_sel = 'covr_exp'
     do_delete = True
