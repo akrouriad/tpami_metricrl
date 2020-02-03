@@ -22,7 +22,7 @@ class ProjectionDelSwapMetricRL(Agent):
     def __init__(self, mdp_info, policy_params, critic_params,
                  actor_optimizer, n_epochs_per_fit, batch_size,
                  entropy_profile, max_kl, lam, n_samples=2000, critic_fit_params=None, a_cost_scale=0., clus_sel='covr',
-                 do_delete=False, opt_temp=True, squash=False):
+                 do_delete=False, opt_temp=True, squash='none'):
         self._critic_fit_params = dict() if critic_fit_params is None else critic_fit_params
 
         policy = MetricPolicy(mdp_info.observation_space.shape,
@@ -95,7 +95,7 @@ class ProjectionDelSwapMetricRL(Agent):
                    pol_dist=self.policy.distribution_t(obs),
                    membership=self.policy.get_membership_t(obs).detach(),
                    **utils_from_chol(old_chol))
-        if self._squash:
+        if self._squash == 'tanh':
             old['log_p'] = self.policy.log_prob_t(obs, act, act_raw).clone().detach()
         else:
             old['log_p'] = self.policy.log_prob_t(obs, act).clone().detach()
@@ -191,7 +191,7 @@ class ProjectionDelSwapMetricRL(Agent):
                     proj_distrib = torch.distributions.MultivariateNormal(proj_d['means'], scale_tril=proj_d['chol'])
 
                     # Compute loss
-                    if self._squash:
+                    if self._squash == 'tanh':
                         prob_ratio = torch.exp(MetricPolicy.log_prob_from_distrib(proj_distrib, act_i, act_raw_i) - old_log_p_i)
                     else:
                         prob_ratio = torch.exp(MetricPolicy.log_prob_from_distrib(proj_distrib, act_i) - old_log_p_i)
@@ -201,7 +201,7 @@ class ProjectionDelSwapMetricRL(Agent):
                     for opt in self._actor_optimizers[1:]:
                         opt.step()
 
-                    if self._squash:
+                    if self._squash == 'tanh' or self._squash == 'clip':
                         self.policy.set_cmeans_t(self.policy.get_cmeans_t())
 
     def _cleanup(self, kl_ub, obs, old_pol_data, adv, act):
@@ -558,7 +558,7 @@ class ProjectionDelSwapMetricRL(Agent):
                 proj_distrib = torch.distributions.MultivariateNormal(proj_d['means'], scale_tril=proj_d['chol'])
 
                 # Compute loss
-                if self._squash:
+                if self._squash == 'tanh':
                     prob_ratio = torch.exp(MetricPolicy.log_prob_from_distrib(proj_distrib, act_i, act_raw_i) - old_log_p_i)
                 else:
                     prob_ratio = torch.exp(MetricPolicy.log_prob_from_distrib(proj_distrib, act_i) - old_log_p_i)
@@ -568,7 +568,7 @@ class ProjectionDelSwapMetricRL(Agent):
                 for opt in self._actor_optimizers:
                     opt.step()
 
-                if self._squash:
+                if self._squash == 'tanh' or self._squash == 'clip':
                     self.policy.set_cmeans_t(self.policy.get_cmeans_t())
 
     def _full_batch_projection_all_par(self, obs, old, entropy_lb):
