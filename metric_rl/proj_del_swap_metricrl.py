@@ -485,12 +485,16 @@ class ProjectionDelSwapMetricRL(Agent):
                 # self.policy.set_cluster_centers(c_old)
                 # self.policy._regressor.means.data = cmeas_backup
                 # return fitness
-            elif self._clus_sel == 'covr_exp':
+            elif self._clus_sel.startswith('covr_exp'):
                 c_old = self.policy.get_cluster_centers()
                 self.policy.set_cluster_centers(c_i)
-                w = -self.policy._regressor._cluster_distance(obs)
+                w = self.policy._regressor._cluster_distance(obs)
                 self.policy.set_cluster_centers(c_old)
-                return torch.mean(torch.max(w, dim=1)[0]).item() - torch.mean(torch.topk(w, k=3, dim=1)[0]).item()
+                if self._clus_sel == 'covr_exp':
+                    return torch.mean(torch.max(w, dim=1)[0]).item() - torch.mean(torch.topk(w, k=3, dim=1)[0]).item()
+                else:
+                    topk = torch.topk(w, k=3, dim=1)[0]
+                    return torch.mean(topk[:, 0] - torch.mean(topk[:, 1:])).item()
             else:
                 c_old = self.policy.get_cluster_centers()
                 self.policy.set_cluster_centers(c_i)

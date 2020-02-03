@@ -146,7 +146,7 @@ if __name__ == '__main__':
 
     # n_clusters = 10
     # n_clusters = 20
-    n_clusters = 5
+    n_clusters = 10
 
     # Bipedal Walker
     # env_id = 'BipedalWalker-v2'
@@ -155,8 +155,8 @@ if __name__ == '__main__':
     # env_id = 'HalfCheetahBulletEnv-v0'
     # env_id = 'AntBulletEnv-v0'
     # env_id = 'HumanoidBulletEnv-v0'
-    # env_id = 'MountainCarContinuous-v0'
-    env_id = 'InvertedDoublePendulumBulletEnv-v0'
+    env_id = 'MountainCarContinuous-v0'
+    # env_id = 'InvertedDoublePendulumBulletEnv-v0'
     # env_id = 'BipedalWalker-v2'
     horizon = 1000
     gamma = .99
@@ -166,7 +166,7 @@ if __name__ == '__main__':
     do_delete = True
     opt_temp = False
     # squash = 'tanh'
-    squash = 'clip'
+    squash = 'none'
     max_cmean = 1.
 
     log_name = generate_log_folder(env_id, 'lower_std', str(n_clusters), True)
