@@ -155,7 +155,10 @@ if __name__ == '__main__':
     # env_id = 'HalfCheetahBulletEnv-v0'
     # env_id = 'AntBulletEnv-v0'
     # env_id = 'HumanoidBulletEnv-v0'
-    env_id = 'MountainCarContinuous-v0'
+    # env_id = 'MountainCarContinuous-v0'
+    # env_id = 'InvertedPendulumSwingupBulletEnv-v0'
+    # env_id = 'InvertedPendulumBulletEnv-v0'
+    env_id = 'Pendulum-v0'
     # env_id = 'InvertedDoublePendulumBulletEnv-v0'
     # env_id = 'BipedalWalker-v2'
     horizon = 1000

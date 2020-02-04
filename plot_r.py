@@ -136,25 +136,54 @@ def load_data_baselines(res_folder, env, alg_names, nb_runs, entropy=False):
     return all_j, all_r
 
 
+def load_data_fixedtemp(res_folder, env, alg_name, n_clusterss, nb_runs, clus_sels, clus_dels, temps):
+    all_j = []
+    all_r = []
+    all_entropy = []
+    alg_labels = []
+
+    for n_clusters in n_clusterss:
+        for clus_sel in clus_sels:
+            for clus_del in clus_dels:
+                for temp in temps:
+                    alg_label = 'c' + str(n_clusters) + 'h' + clus_sel + 'd' + str(clus_del) + 't' + str(temp) + 'snone'
+                    subfolder = alg_name + '_' + alg_label
+                    print(subfolder)
+                    all_j_a, all_r_a, all_entropy_a = load_data_base(res_folder, env, subfolder, nb_runs)
+
+                    all_j.append(all_j_a)
+                    all_r.append(all_r_a)
+                    all_entropy.append(all_entropy_a)
+                    alg_labels.append(alg_label)
+
+    return all_j, all_r, all_entropy, alg_labels
+
+
 if __name__ == '__main__':
 
     plot_mushroom = False
-    xp_name = 'entropy'
+    # xp_name = 'entropy'
+    xp_name = 'final_medium'
     res_folder = './Results/'
     exp_folder = os.path.join(res_folder, xp_name)
     baseline_folder = os.path.join(res_folder, 'baselines')
     baseline_mushroom_folder = os.path.join(res_folder, 'baselines')
     envs = ['HopperBulletEnv-v0', 'Walker2DBulletEnv-v0', 'HalfCheetahBulletEnv-v0', 'AntBulletEnv-v0']
-    nb_runs = 11
+    temps = [1., 1., .33, .33]
+    nb_runs = 25
     n_clusterss = [10, 20, 40]
+    # clus_sels = ['old_covr_yetnew']
+    clus_sels = ['covr_exp']
+    clus_dels = [True]
     # a_cost_scales = [0., 10.]
     alg_name = 'metricrl'
     baselines_algs = ['ppo2', 'trpo_mpi']
     baselines_mushroom_algs = ['PPO', 'TRPO']
 
     # Creating parameters tables
-    for env in envs:
-        all_j, all_r, all_e, alg_labels = load_data_entropy(exp_folder, env, alg_name, n_clusterss, nb_runs)
+    # for env in envs:
+    for temp, env in zip(temps, envs):
+        all_j, all_r, all_e, alg_labels = load_data_fixedtemp(exp_folder, env, alg_name, n_clusterss, nb_runs, clus_sels, clus_dels, [temp])
         if plot_mushroom:
             b_j, b_r, b_e = load_data_baselines(baseline_mushroom_folder, env, baselines_algs, nb_runs, entropy=True)
             all_e += b_e

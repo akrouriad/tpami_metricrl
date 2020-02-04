@@ -187,7 +187,7 @@ def load_data_fixedtemp(res_folder, env, alg_name, n_clusterss, nb_runs, clus_se
         for clus_sel in clus_sels:
             for clus_del in clus_dels:
                 for temp in temps:
-                    alg_label = 'c' + str(n_clusters) + 'h' + clus_sel + 'd' + str(clus_del) + 't' + str(temp)
+                    alg_label = 'c' + str(n_clusters) + 'h' + clus_sel + 'd' + str(clus_del) + 't' + str(temp) + 'snone'
                     subfolder = alg_name + '_' + alg_label
 
                     all_j_a, all_r_a, all_entropy_a = load_data_base(res_folder, env, subfolder, nb_runs)
@@ -201,8 +201,8 @@ def load_data_fixedtemp(res_folder, env, alg_name, n_clusterss, nb_runs, clus_se
 
 
 if __name__ == '__main__':
-    name_comp = 'heurdiff'
-    xp_names = ['fixedtemp', 'covrexp']
+    name_comp = 'heurtwothird'
+    xp_names = ['final_medium', 'final_medium_h2']
     # xp_name = 'covrexp'
     # xp_name = 'logswapdel_hcheetah'
     res_folder = './Results/'
@@ -214,7 +214,8 @@ if __name__ == '__main__':
     n_clusterss = [10, 20, 40]
     # n_clusterss = [20, 40]
     # clus_sels = ['old_covr', 'covr']
-    clus_sels = [['old_covr_yetnew'], ['covr_exp']]
+    # clus_sels = [['old_covr_yetnew'], ['covr_exp']]
+    clus_sels = [['covr_exp'], ['covr_exp2']]
     # clus_sels = ['covr_exp']
     # clus_sels = ['adv', 'old_covr', 'covr', 'covr_minpen']
     # clus_dels = [True, False]
