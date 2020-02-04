@@ -68,6 +68,7 @@ def project_entrop(chol, e_lb):
         chol *= torch.exp((e_lb - ent) / a_dim)
     return chol
 
+
 def lin_gauss_kl_proj(means, chol, intermediate_means, old_means, old_cov, old_prec, old_logdetcov, epsilon, entrop_lb):
     # KL violation
     chol = project_entrop(chol, entrop_lb)

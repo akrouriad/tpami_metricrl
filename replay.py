@@ -34,6 +34,7 @@ class DummyAgent(Agent):
     def fit(self, dataset):
         pass
 
+
 def replay(env_id, horizon, gamma, torch_policy, dt, n_episodes, seed):
     print('Metric RL')
     np.random.seed(seed)
@@ -70,16 +71,17 @@ if __name__ == '__main__':
     # Bipedal Walker
     # env_id = 'BipedalWalker-v2'
     # horizon = 1600
-    #env_id = 'AntBulletEnv-v0'
-    #env_id = 'Walker2DBulletEnv-v0'
-    env_id = 'HopperBulletEnv-v0'
+    # env_id = 'AntBulletEnv-v0'
+    env_id = 'Walker2DBulletEnv-v0'
+    # env_id = 'HopperBulletEnv-v0'
     # env_id = 'HalfCheetahBulletEnv-v0'
     horizon = 1000
     gamma = .99
 
-    log_name = 'Results/clus_heur/' + env_id + '/metricrl_c10hcovr'
+    log_name = 'Results/fixedtemp/' + env_id + '/metricrl_c40hold_covr_yetnewdTruet0.33'
 
     policy = load_policy(log_name, iteration=1001)
 
     replay(env_id, horizon, gamma, policy, dt=1./30,
-           n_episodes=10, seed=1)
+           n_episodes=10, seed=7)
+
