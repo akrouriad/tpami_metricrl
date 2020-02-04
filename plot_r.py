@@ -42,7 +42,7 @@ def create_figure(res_folder, subfolder, name, env, all_data, alg_labels, use_me
     plt.clf()
 
 
-def load_data_base(res_folder, env, subfolder, nb_runs):
+def load_data_base(res_folder, env, subfolder, nb_runs, entropy=True):
     all_r_a = []
     all_j_a = []
     all_entropy_a = []
@@ -59,18 +59,24 @@ def load_data_base(res_folder, env, subfolder, nb_runs):
         try:
             J = np.load(j_name)
             R = np.load(r_name)
-            E = np.load(e_name)
+            if entropy:
+                E = np.load(e_name)
             if R.shape[0] != 1001:
                 print(r_name, 'wrong shape')
-                print(R.shape)
-            else:
-                all_j_a.append(J)
-                all_r_a.append(R)
+                print(R.shape, J.shape)
+                J = J[:1001]
+                R = R[:1001]
+            all_j_a.append(J)
+            all_r_a.append(R)
+            if entropy:
                 all_entropy_a.append(E)
         except:
             print(r_name, 'bad file')
 
-    return all_j_a, all_r_a, all_entropy_a
+    if entropy:
+        return all_j_a, all_r_a, all_entropy_a
+    else:
+        return all_j_a, all_r_a
 
 
 def load_data_acost(res_folder, env, alg_name, n_clusterss, a_cost_scales, nb_runs):
@@ -115,44 +121,51 @@ def load_data_entropy(res_folder, env, alg_name, n_clusterss, nb_runs):
     return all_j, all_r, all_entropy, alg_labels
 
 
-def load_data_baselines(res_folder, env, alg_names, nb_runs):
+def load_data_baselines(res_folder, env, alg_names, nb_runs, entropy=False):
     all_j = []
     all_r = []
-    all_entropy = []
 
     for alg_name in alg_names:
         subfolder = alg_name
 
-        all_j_a, all_r_a, all_entropy_a = load_data_base(res_folder, env, subfolder, nb_runs)
+        all_j_a, all_r_a = load_data_base(res_folder, env, subfolder, nb_runs, entropy=entropy)
 
         all_j.append(all_j_a)
         all_r.append(all_r_a)
-        all_entropy.append(all_entropy_a)
 
-    return all_j, all_r, all_entropy
+    return all_j, all_r
 
 
 if __name__ == '__main__':
+
+    plot_mushroom = False
     xp_name = 'entropy'
     res_folder = './Results/'
     exp_folder = os.path.join(res_folder, xp_name)
     baseline_folder = os.path.join(res_folder, 'baselines')
+    baseline_mushroom_folder = os.path.join(res_folder, 'baselines')
     envs = ['HopperBulletEnv-v0', 'Walker2DBulletEnv-v0', 'HalfCheetahBulletEnv-v0', 'AntBulletEnv-v0']
     nb_runs = 11
     n_clusterss = [10, 20, 40]
     # a_cost_scales = [0., 10.]
     alg_name = 'metricrl'
-    baselines_algs = ['PPO', 'TRPO']
+    baselines_algs = ['ppo2', 'trpo_mpi']
+    baselines_mushroom_algs = ['PPO', 'TRPO']
 
     # Creating parameters tables
     for env in envs:
         all_j, all_r, all_e, alg_labels = load_data_entropy(exp_folder, env, alg_name, n_clusterss, nb_runs)
-        b_j, b_r, b_e = load_data_baselines(baseline_folder, env, baselines_algs, nb_runs)
+        if plot_mushroom:
+            b_j, b_r, b_e = load_data_baselines(baseline_mushroom_folder, env, baselines_algs, nb_runs, entropy=True)
+            all_e += b_e
+            n_missing_entropy = 0
+        else:
+            b_j, b_r = load_data_baselines(baseline_folder, env, baselines_algs, nb_runs)
+            n_missing_entropy = -len(baselines_algs)
 
         all_j += b_j
         all_r += b_r
-        all_e += b_e
         alg_labels += baselines_algs
 
         create_figure(res_folder, xp_name, 'R', env, all_r, alg_labels)
-        create_figure(res_folder, xp_name, 'E', env, all_e, alg_labels)
+        create_figure(res_folder, xp_name, 'E', env, all_e, alg_labels[:n_missing_entropy])
