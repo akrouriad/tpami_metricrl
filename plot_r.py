@@ -149,7 +149,7 @@ if __name__ == '__main__':
     n_clusterss = [10, 20, 40]
     # a_cost_scales = [0., 10.]
     alg_name = 'metricrl'
-    baselines_algs = ['ppo2', 'trpo_mpi']
+    baselines_algs = ['ppo2', 'trpo_linear', 'trpo_mpi']
     baselines_mushroom_algs = ['PPO', 'TRPO']
 
     # Creating parameters tables
