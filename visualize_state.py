@@ -30,8 +30,8 @@ def rescale_joint(j, theta_r):
 
 
 def get_image(mdp, scaling):
-    view_matrix = mdp.env._p.computeViewMatrixFromYawPitchRoll(cameraTargetPosition=[0, 0, 0],
-                                                               distance=mdp.env._cam_dist,
+    view_matrix = mdp.env._p.computeViewMatrixFromYawPitchRoll(cameraTargetPosition=[0, 0, 0.5],
+                                                               distance=2.5,
                                                                yaw=mdp.env._cam_yaw,
                                                                pitch=mdp.env._cam_pitch,
                                                                roll=0,
@@ -80,20 +80,30 @@ def set_state(robot, robot_body):
 if __name__ == '__main__':
     #envs = ['HopperBulletEnv-v0', 'Walker2DBulletEnv-v0', 'HalfCheetahBulletEnv-v0', 'AntBulletEnv-v0']
     iteration = 1001
+    scaling = 3
 
-    exp_id = 'heurndel'
-    env_id = 'AntBulletEnv-v0'
+    exp_id = 'final_medium'
     alg_name = 'metricrl'
     clus_sel = 'covr'
     clus_del = True
     n_clusters = 10
-    run_id = 5
-    scaling = 3
 
-    postfix = 'c' + str(n_clusters) + 'h' + clus_sel + 'd' + str(clus_del)
+    env_id = 'AntBulletEnv-v0'
+    postfix = 'c10hcovr_expdTruet0.33snone'
+    run_id = 0
+
+    # env_id = 'HopperBulletEnv-v0'
+    # postfix = 'c10hcovr_expdTruet1.0snone'
+    # run_id = 12
+
+    #postfix = 'c' + str(n_clusters) + 'h' + clus_sel + 'd' + str(clus_del)
+
 
     log_name = os.path.join('Results', exp_id, env_id, alg_name + '_' + postfix)
     print(log_name)
+
+    save = True
+    save_dir = os.path.join('Results', 'img', exp_id, env_id, alg_name)
 
     policy_path = os.path.join(log_name, 'net/network-' + str(run_id) + '-' + str(iteration) + '.pth')
     policy_torch = torch.load(policy_path)
@@ -115,6 +125,12 @@ if __name__ == '__main__':
     print('- Displaying neutral position')
     px = get_image(env, scaling)
     viewer.display(px)
+
+    if save:
+        full_path = os.path.join(save_dir, 'cluster-neutral.png')
+        os.makedirs(save_dir, exist_ok=True)
+        pygame.image.save(viewer._screen, full_path)
+
     wait()
 
     for n, cluster in enumerate(policy_torch.centers.detach().numpy()):
@@ -130,6 +146,11 @@ if __name__ == '__main__':
 
         px = get_image(env, scaling)
         viewer.display(px)
+
+        if save:
+            full_path = os.path.join(save_dir, 'cluster-' + str(n) + '.png')
+            os.makedirs(save_dir, exist_ok=True)
+            pygame.image.save(viewer._screen, full_path)
 
         wrong_state = np.any((cluster - robot.calc_state()) > state_reconstruction_precision)
         print('wrong state? ', wrong_state)
