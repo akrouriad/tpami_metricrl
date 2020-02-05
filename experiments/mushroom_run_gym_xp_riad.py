@@ -5,10 +5,10 @@ from metric_rl.logger import generate_log_folder
 test = False
 local = False
 
-# tu_id = 'dt11kypo'
-# home = '~/'
-tu_id = 'ra61casa'
-home = '~/src/'
+tu_id = 'dt11kypo'
+home = '~/'
+# tu_id = 'ra61casa'
+# home = '~/src/'
 
 #!
 # experiment_name = 'final_big'
@@ -41,7 +41,7 @@ envs = ['BipedalWalker-v2', 'InvertedPendulumBulletEnv-v0', 'Pendulum-v0', 'Inve
 # temp_per_envs = [1., 1., 1.]
 temp_per_envs = [1., 1., 1., 1.]
 
-horizon = 1000
+horizons = [1600, 1000, 200, 1000]
 nb_runs = 25
 
 #!
@@ -74,7 +74,7 @@ max_cmean = 1.
 alg_name = 'metricrl'
 
 # Creating parameters tables
-for env, temp_per_env in zip(envs, temp_per_envs):
+for env, temp_per_env, horizon in zip(envs, temp_per_envs, horizons):
     for n_clusters in n_clusterss:
         for clus_sel in clus_sels:
             for clus_del in clus_dels:
