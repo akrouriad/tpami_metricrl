@@ -135,8 +135,8 @@ def plot_selected_activations(filename, w, idxs, plot_default):
     if plot_default:
         plt.plot(w_default)
         labels.append('default cluster')
-        plt.ylabel('$w(s_t)$')
-        plt.xlabel('$t$')
+    plt.ylabel('$w(s_t)$')
+    plt.xlabel('$t$')
 
     ncol = n_clusters//2
     if plot_default:
