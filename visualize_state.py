@@ -105,7 +105,7 @@ if __name__ == '__main__':
     print(log_name)
 
     save = True
-    save_dir = os.path.join('Results', 'img', exp_id, env_id, alg_name)
+    save_dir = os.path.join('Results', 'img', env_id)
 
     policy_path = os.path.join(log_name, 'net/network-' + str(run_id) + '-' + str(iteration) + '.pth')
     policy_torch = torch.load(policy_path)
