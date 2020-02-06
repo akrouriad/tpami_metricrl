@@ -84,7 +84,7 @@ def set_share_axes(axs, target=None, sharex=False, sharey=False):
             ax.yaxis.offsetText.set_visible(False)
 
 
-def plot_all_activations(filename, w, imgs, display):
+def plot_all_activations(filename, w, imgs):
     n_clusters = w.shape[1]
     fig, axes = plt.subplots(n_clusters + 1, 2, figsize=(10, 20), gridspec_kw={'width_ratios': [3.5, 1]})
     set_share_axes(axes[:, 0], sharex=True, sharey=True)
@@ -117,12 +117,10 @@ def plot_all_activations(filename, w, imgs, display):
 
     plt.savefig(filename)
 
-    if display:
-        plt.show()
 
-def plot_selected_activations(filename, w, idxs, display):
+def plot_selected_activations(filename, w, idxs, plot_default):
     n_clusters = w.shape[1]
-    plt.figure()
+    plt.figure(figsize=(10, 3))
 
     labels = list()
 
@@ -134,19 +132,22 @@ def plot_selected_activations(filename, w, idxs, display):
     w_total = np.sum(w, axis=1)
     w_default = 1 - w_total
 
-    plt.plot(w_default)
-    labels.append('default cluster')
-    plt.ylabel('$w(s_t)$')
-    plt.xlabel('$t$')
+    if plot_default:
+        plt.plot(w_default)
+        labels.append('default cluster')
+        plt.ylabel('$w(s_t)$')
+        plt.xlabel('$t$')
 
-    plt.legend(labels, ncol=n_clusters//2 + 1, loc='upper center',
+    ncol = n_clusters//2
+    if plot_default:
+        ncol += 1
+
+    plt.legend(labels, ncol=ncol, loc='upper center',
                bbox_to_anchor=(0.5, -0.10), shadow=False, frameon=False)
     #plt.subplots_adjust(left=0.08, bottom=0.05, right=0.99, top=0.99, wspace=0)
 
     plt.savefig(filename, bbox_inches='tight')
 
-    if display:
-        plt.show()
 
 def load_cluster_images(env_id, n_clusters):
     imgs = list()
@@ -169,6 +170,8 @@ def load_policy(log_name, iteration, seed):
 if __name__ == '__main__':
     rc('text', usetex=True)
 
+    display = False
+
     dt = 0.
     horizon = 1000
     gamma = .99
@@ -176,11 +179,13 @@ if __name__ == '__main__':
     # env_id = 'AntBulletEnv-v0'
     # log_name = 'Results/final_medium/AntBulletEnv-v0/metricrl_c10hcovr_expdTruet0.33snone'
     # idxs = [0, 1, 2, 3, 8]
+    # plot_default = True
     # seed = 0
 
     env_id = 'HopperBulletEnv-v0'
     log_name = 'Results/final_medium/HopperBulletEnv-v0/metricrl_c10hcovr_expdTruet1.0snone'
-    idxs = [0, 1, 4, 5, 9]
+    idxs = [0, 4, 5, 9]
+    plot_default = False
     seed = 12
 
     n_clusters = 10
@@ -199,6 +204,8 @@ if __name__ == '__main__':
 
     imgs = load_cluster_images(env_id, n_clusters)
 
-    plot_all_activations(filename_all, w[:max_time_all], imgs, False)
-    plot_selected_activations(filename_selected, w[:max_time_selected], idxs, True)
+    plot_all_activations(filename_all, w[:max_time_all], imgs)
+    plot_selected_activations(filename_selected, w[:max_time_selected], idxs, plot_default)
 
+    if display:
+        plt.show()
