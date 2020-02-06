@@ -29,11 +29,11 @@ def rescale_joint(j, theta_r):
     return delta*theta_r/2+theta_bar
 
 
-def get_image(mdp, scaling):
-    view_matrix = mdp.env._p.computeViewMatrixFromYawPitchRoll(cameraTargetPosition=[0, 0, 0.5],
-                                                               distance=2.5,
+def get_image(mdp, scaling, distance, pitch):
+    view_matrix = mdp.env._p.computeViewMatrixFromYawPitchRoll(cameraTargetPosition=[0, 0, 0],
+                                                               distance=distance,
                                                                yaw=mdp.env._cam_yaw,
-                                                               pitch=mdp.env._cam_pitch,
+                                                               pitch=pitch,
                                                                roll=0,
                                                                upAxisIndex=2)
     proj_matrix = mdp.env._p.computeProjectionMatrixFOV(fov=60,
@@ -81,6 +81,8 @@ if __name__ == '__main__':
     #envs = ['HopperBulletEnv-v0', 'Walker2DBulletEnv-v0', 'HalfCheetahBulletEnv-v0', 'AntBulletEnv-v0']
     iteration = 1001
     scaling = 3
+    distance = 2.5
+    pitch = -5
 
     exp_id = 'final_medium'
     alg_name = 'metricrl'
@@ -123,7 +125,7 @@ if __name__ == '__main__':
     robot_body = robot.robot_body
 
     print('- Displaying neutral position')
-    px = get_image(env, scaling)
+    px = get_image(env, scaling, distance, pitch)
     viewer.display(px)
 
     if save:
@@ -144,7 +146,7 @@ if __name__ == '__main__':
 
         set_state(robot, robot_body)
 
-        px = get_image(env, scaling)
+        px = get_image(env, scaling, distance, pitch)
         viewer.display(px)
 
         if save:
