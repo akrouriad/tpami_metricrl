@@ -64,6 +64,7 @@ def load_data_base(res_folder, env, subfolder, nb_runs, nb_epochs, entropy=True)
         r_filename = 'R-' + str(run) + '.npy'
         e_filename = 'E-' + str(run) + '.npy'
 
+        print(res_folder, env, subfolder, j_filename)
         j_name = os.path.join(res_folder, env, subfolder, j_filename)
         r_name = os.path.join(res_folder, env, subfolder, r_filename)
         e_name = os.path.join(res_folder, env, subfolder, e_filename)
@@ -173,14 +174,14 @@ def load_data_fixedtemp(res_folder, env, alg_name, n_clusterss, nb_runs, nb_epoc
 
 if __name__ == '__main__':
 
-    plot_baselines = False
+    plot_baselines = True
 
     xp_name = 'final_small2'
     envs = ['BipedalWalker-v2', 'InvertedPendulumBulletEnv-v0', 'Pendulum-v0', 'InvertedPendulumSwingupBulletEnv-v0']
     temps = [1., 1., 1., 1.]
     n_clusterss = [5, 10, 20]
     nb_epochs = 500
-    alg_labels = ['Metric-5', 'Metric-10', 'Metric-20']
+    alg_labels = ['Metric-5', 'Metric-10', 'Metric-20', 'PPO', 'TRPO (MLP)']
 
     # xp_name = 'final_medium'
     # envs = ['HopperBulletEnv-v0', 'Walker2DBulletEnv-v0', 'HalfCheetahBulletEnv-v0', 'AntBulletEnv-v0']
@@ -199,7 +200,7 @@ if __name__ == '__main__':
     clus_dels = [True]
     # a_cost_scales = [0., 10.]
     alg_name = 'metricrl'
-    baselines_algs = ['ppo2', 'trpo_mpi', 'trpo_linear']
+    baselines_algs = ['ppo2', 'trpo_mpi'] #'trpo_linear']
     baselines_mushroom_algs = ['PPO', 'TRPO']
 
 
@@ -210,7 +211,7 @@ if __name__ == '__main__':
         all_j, all_r, all_e, _ = load_data_fixedtemp(exp_folder, env, alg_name, n_clusterss, nb_runs, nb_epochs, clus_sels, clus_dels, [temp])
 
         if plot_baselines:
-            b_j, b_r = load_data_baselines(baseline_folder, env, baselines_algs, nb_runs)
+            b_j, b_r = load_data_baselines(baseline_folder, env, baselines_algs, nb_runs, nb_epochs)
             all_j += b_j
             all_r += b_r
 

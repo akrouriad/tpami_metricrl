@@ -78,7 +78,8 @@ def load_policy(log_name, iteration, seed):
 
 
 if __name__ == '__main__':
-    dt = 0
+    dt = 1/10
+    #dt = 0
 
     horizon = 1000
     gamma = .99
@@ -87,10 +88,13 @@ if __name__ == '__main__':
     # log_name = 'Results/final_medium/AntBulletEnv-v0/metricrl_c10hcovr_expdTruet0.33snone'
     # seed = 0
 
-    env_id = 'HopperBulletEnv-v0'
-    log_name = 'Results/final_medium/HopperBulletEnv-v0/metricrl_c10hcovr_expdTruet1.0snone'
-    seed = 12
+    # env_id = 'HopperBulletEnv-v0'
+    # log_name = 'Results/final_medium/HopperBulletEnv-v0/metricrl_c10hcovr_expdTruet1.0snone'
+    # seed = 12
 
+    env_id = 'HalfCheetahBulletEnv-v0'
+    log_name = 'Results/final_medium/HalfCheetahBulletEnv-v0/metricrl_c10hcovr_expdTruet0.33snone'
+    seed = 4
 
     policy = load_policy(log_name, iteration=1001, seed=12)
 

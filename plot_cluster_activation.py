@@ -74,7 +74,10 @@ def set_share_axes(axs, target=None, sharex=False, sharey=False):
             target._shared_y_axes.join(target, ax)
     # Turn off x tick labels and offset text for all but the bottom row
     if sharex and axs.ndim > 1:
-        for ax in axs[:-1,:].flat:
+        for ax in axs[:-2, 1:].flat:
+            ax.xaxis.set_tick_params(which='both', labelbottom=False, labeltop=False)
+            ax.xaxis.offsetText.set_visible(False)
+        for ax in axs[:-1, 0].flat:
             ax.xaxis.set_tick_params(which='both', labelbottom=False, labeltop=False)
             ax.xaxis.offsetText.set_visible(False)
     # Turn off y tick labels and offset text for all but the left most column
@@ -84,11 +87,20 @@ def set_share_axes(axs, target=None, sharex=False, sharey=False):
             ax.yaxis.offsetText.set_visible(False)
 
 
-def plot_all_activations(filename, w, imgs):
+def plot_all_activations(filename, w, imgs, ratios):
     n_clusters = w.shape[1]
-    fig, axes = plt.subplots(n_clusters + 1, 2, figsize=(15, 20), gridspec_kw={'width_ratios': [3.5, 1]})
-    set_share_axes(axes[:, 0], sharex=True, sharey=True)
-    fig.delaxes(axes[-1, 1])
+
+    n_rows = 10
+    n_cols = 2 * n_clusters // n_rows
+
+
+    gridspec = {'width_ratios': ratios*(n_clusters // n_rows)}
+
+    fig, axes = plt.subplots(n_rows + 1, n_cols, figsize=(15, 20), gridspec_kw=gridspec)
+    set_share_axes(axes[:, 0::2], sharex=True, sharey=True)
+
+    for i in range(1, n_cols):
+        fig.delaxes(axes[-1, i])
 
     lines = list()
     labels = list()
@@ -96,12 +108,13 @@ def plot_all_activations(filename, w, imgs):
 
     for i in range(n_clusters):
         w_idx = w[:, i]
-        lines += axes[i, 0].plot(w_idx, color=c.__next__()['color'])
-        axes[i, 0].set_ylabel('$w(s_t)$')
+        lines += axes[i % n_rows, i // n_rows * 2].plot(w_idx, color=c.__next__()['color'])
+        if i // n_rows * 2 == 0:
+            axes[i % n_rows, i // n_rows * 2].set_ylabel('$w(s_t)$')
         labels.append('cluster ' + str(i))
-        axes[i, 1].imshow(imgs[i])
-        axes[i, 1].get_xaxis().set_visible(False)
-        axes[i, 1].get_yaxis().set_visible(False)
+        axes[i % n_rows, 1 + i // n_rows * 2].imshow(imgs[i])
+        axes[i % n_rows, 1 + i // n_rows * 2].get_xaxis().set_visible(False)
+        axes[i % n_rows, 1 + i // n_rows * 2].get_yaxis().set_visible(False)
 
     w_total = np.sum(w, axis=1)
     w_default = 1 - w_total
@@ -178,19 +191,30 @@ if __name__ == '__main__':
 
     # env_id = 'AntBulletEnv-v0'
     # log_name = 'Results/final_medium/AntBulletEnv-v0/metricrl_c10hcovr_expdTruet0.33snone'
-    # idxs = [0, 1, 2, 3, 8]
-    # plot_default = True
+    # idxs = [0, 2, 3, 6]
+    # plot_default = False
     # seed = 0
+    # ratios = [3.5, 1]
+    # n_clusters = 10
 
-    env_id = 'HopperBulletEnv-v0'
-    log_name = 'Results/final_medium/HopperBulletEnv-v0/metricrl_c10hcovr_expdTruet1.0snone'
-    idxs = [0, 4, 5, 9]
+    # env_id = 'HopperBulletEnv-v0'
+    # log_name = 'Results/final_medium/HopperBulletEnv-v0/metricrl_c10hcovr_expdTruet1.0snone'
+    # idxs = [9, 4, 6, 0]
+    # plot_default = False
+    # seed = 12
+    # ratios = [3.5, 1]
+    # n_clusters = 10
+
+    env_id = 'HalfCheetahBulletEnv-v0'
+    log_name = 'Results/final_medium/HalfCheetahBulletEnv-v0/metricrl_c20hcovr_expdTruet0.33snone'
+    idxs = [13, 7, 4, 17]
     plot_default = False
-    seed = 12
+    seed = 4
+    ratios = [2, 1]
+    n_clusters = 20
 
-    n_clusters = 10
     max_time_all = 350
-    max_time_selected = 150
+    max_time_selected = 350
 
 
     save_path = os.path.join('Results', 'plots', 'activations',)
@@ -204,7 +228,7 @@ if __name__ == '__main__':
 
     imgs = load_cluster_images(env_id, n_clusters)
 
-    plot_all_activations(filename_all, w[:max_time_all], imgs)
+    plot_all_activations(filename_all, w[:max_time_all], imgs, ratios)
     plot_selected_activations(filename_selected, w[:max_time_selected], idxs, plot_default)
 
     if display:

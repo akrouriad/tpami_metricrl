@@ -86,20 +86,17 @@ if __name__ == '__main__':
 
     exp_id = 'final_medium'
     alg_name = 'metricrl'
-    clus_sel = 'covr'
-    clus_del = True
-    n_clusters = 10
 
-    env_id = 'AntBulletEnv-v0'
-    postfix = 'c10hcovr_expdTruet0.33snone'
-    run_id = 0
+    # env_id = 'AntBulletEnv-v0'
+    # postfix = 'c10hcovr_expdTruet0.33snone'
+    # run_id = 0
 
     # env_id = 'HopperBulletEnv-v0'
     # postfix = 'c10hcovr_expdTruet1.0snone'
     # run_id = 12
-
-    #postfix = 'c' + str(n_clusters) + 'h' + clus_sel + 'd' + str(clus_del)
-
+    env_id = 'HalfCheetahBulletEnv-v0'
+    postfix = 'c20hcovr_expdTruet0.33snone'
+    run_id = 4
 
     log_name = os.path.join('Results', exp_id, env_id, alg_name + '_' + postfix)
     print(log_name)
