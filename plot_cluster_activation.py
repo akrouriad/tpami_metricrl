@@ -86,7 +86,7 @@ def set_share_axes(axs, target=None, sharex=False, sharey=False):
 
 def plot_all_activations(filename, w, imgs):
     n_clusters = w.shape[1]
-    fig, axes = plt.subplots(n_clusters + 1, 2, figsize=(10, 20), gridspec_kw={'width_ratios': [3.5, 1]})
+    fig, axes = plt.subplots(n_clusters + 1, 2, figsize=(15, 20), gridspec_kw={'width_ratios': [3.5, 1]})
     set_share_axes(axes[:, 0], sharex=True, sharey=True)
     fig.delaxes(axes[-1, 1])
 
@@ -120,7 +120,7 @@ def plot_all_activations(filename, w, imgs):
 
 def plot_selected_activations(filename, w, idxs, plot_default):
     n_clusters = w.shape[1]
-    plt.figure(figsize=(10, 3))
+    plt.figure(figsize=(10, 2))
 
     labels = list()
 
@@ -143,7 +143,7 @@ def plot_selected_activations(filename, w, idxs, plot_default):
         ncol += 1
 
     plt.legend(labels, ncol=ncol, loc='upper center',
-               bbox_to_anchor=(0.5, -0.10), shadow=False, frameon=False)
+               bbox_to_anchor=(0.5, -0.2), shadow=False, frameon=False)
     #plt.subplots_adjust(left=0.08, bottom=0.05, right=0.99, top=0.99, wspace=0)
 
     plt.savefig(filename, bbox_inches='tight')
