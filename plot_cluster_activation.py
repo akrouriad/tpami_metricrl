@@ -59,7 +59,6 @@ def get_cluster_activation(env_id, horizon, gamma, torch_policy, dt, n_episodes,
     dataset = core.evaluate(n_episodes=n_episodes, quiet=True)
 
     s, *_ = parse_dataset(dataset)
-    print(len(s))
     w = agent._regressor.get_membership(torch.tensor(s))
 
     return w.detach().numpy()
@@ -85,51 +84,74 @@ def set_share_axes(axs, target=None, sharex=False, sharey=False):
             ax.yaxis.offsetText.set_visible(False)
 
 
-def plot_activations(filename, w, idxs, imgs, display):
-    fig, axes = plt.subplots(len(idxs) + 2, 2, figsize=(10, 10), gridspec_kw={'width_ratios': [3.5, 1]})
+def plot_all_activations(filename, w, imgs, display):
+    n_clusters = w.shape[1]
+    fig, axes = plt.subplots(n_clusters + 1, 2, figsize=(10, 20), gridspec_kw={'width_ratios': [3.5, 1]})
     set_share_axes(axes[:, 0], sharex=True, sharey=True)
     fig.delaxes(axes[-1, 1])
-    fig.delaxes(axes[-2, 1])
 
     lines = list()
     labels = list()
     c = plt.rcParams['axes.prop_cycle']()
 
-    for i, idx in enumerate(idxs):
-        w_idx = w[:, idx]
+    for i in range(n_clusters):
+        w_idx = w[:, i]
         lines += axes[i, 0].plot(w_idx, color=c.__next__()['color'])
         axes[i, 0].set_ylabel('$w(s_t)$')
-        labels.append('cluster ' + str(idx))
+        labels.append('cluster ' + str(i))
         axes[i, 1].imshow(imgs[i])
         axes[i, 1].get_xaxis().set_visible(False)
         axes[i, 1].get_yaxis().set_visible(False)
 
     w_total = np.sum(w, axis=1)
-    w_others = w_total - np.sum(w[:, idxs], axis=1)
     w_default = 1 - w_total
 
-    lines += axes[-2, 0].plot(w_others, color=c.__next__()['color'])
-    labels.append('other clusters')
-    axes[-2, 0].set_ylabel('$w(s_t)$')
     lines += axes[-1, 0].plot(w_default, color=c.__next__()['color'])
     labels.append('default cluster')
     axes[-1, 0].set_ylabel('$w(s_t)$')
     axes[-1, 0].set_xlabel('$t$')
 
-    plt.figlegend(lines, labels, ncol=len(idxs)+2, loc='lower center',
+    plt.figlegend(lines, labels, ncol=n_clusters//2 + 1, loc='lower center',
                   shadow=False, frameon=False)
-    plt.subplots_adjust(left=0.08, bottom=0.10, right=0.99, top=0.99, wspace=0)
+    plt.subplots_adjust(left=0.08, bottom=0.05, right=0.99, top=0.99, wspace=0)
+
+    plt.savefig(filename)
+
+    if display:
+        plt.show()
+
+def plot_selected_activations(filename, w, idxs, display):
+    n_clusters = w.shape[1]
+    plt.figure()
+
+    labels = list()
+
+    for idx in idxs:
+        w_idx = w[:, idx]
+        plt.plot(w_idx)
+        labels.append('cluster ' + str(idx))
+
+    w_total = np.sum(w, axis=1)
+    w_default = 1 - w_total
+
+    plt.plot(w_default)
+    labels.append('default cluster')
+    plt.ylabel('$w(s_t)$')
+    plt.xlabel('$t$')
+
+    plt.legend(labels, ncol=n_clusters//2 + 1, loc='upper center',
+               bbox_to_anchor=(0.5, -0.10), shadow=False, frameon=False)
+    #plt.subplots_adjust(left=0.08, bottom=0.05, right=0.99, top=0.99, wspace=0)
 
     plt.savefig(filename, bbox_inches='tight')
 
     if display:
         plt.show()
 
-
-def load_cluster_images(env_id, idxs):
+def load_cluster_images(env_id, n_clusters):
     imgs = list()
-    for idx in idxs:
-        filename = 'cluster-' + str(idx) + '.png'
+    for i in range(n_clusters):
+        filename = 'cluster-' + str(i) + '.png'
         file_path = os.path.join('Results', 'img', env_id, filename)
         img = mpimg.imread(file_path)
         imgs.append(img)
@@ -153,32 +175,30 @@ if __name__ == '__main__':
 
     # env_id = 'AntBulletEnv-v0'
     # log_name = 'Results/final_medium/AntBulletEnv-v0/metricrl_c10hcovr_expdTruet0.33snone'
+    # idxs = [0, 1, 2, 3, 8]
     # seed = 0
 
     env_id = 'HopperBulletEnv-v0'
     log_name = 'Results/final_medium/HopperBulletEnv-v0/metricrl_c10hcovr_expdTruet1.0snone'
+    idxs = [0, 1, 4, 5, 9]
     seed = 12
 
-    n_cluster = 3
-    max_time = 350
+    n_clusters = 10
+    max_time_all = 350
+    max_time_selected = 150
+
 
     save_path = os.path.join('Results', 'plots', 'activations',)
     os.makedirs(save_path, exist_ok=True)
-    filename = os.path.join(save_path, env_id + '.png')
+    filename_all = os.path.join(save_path, env_id + '_all.png')
+    filename_selected = os.path.join(save_path, env_id + '.png')
 
     policy = load_policy(log_name, iteration=1001, seed=12)
 
     w = get_cluster_activation(env_id, horizon, gamma, policy, dt, n_episodes=1, seed=12)
 
-    w = w[:max_time, :]
+    imgs = load_cluster_images(env_id, n_clusters)
 
-    w_mean = np.mean(w, axis=0)
-    idxs = w_mean.argsort()[::-1][:n_cluster]
-    print('w:', w_mean)
-    print('idx', idxs)
+    plot_all_activations(filename_all, w[:max_time_all], imgs, False)
+    plot_selected_activations(filename_selected, w[:max_time_selected], idxs, True)
 
-    sorted_idxs = np.sort(idxs)
-
-    imgs = load_cluster_images(env_id, sorted_idxs)
-
-    plot_activations(filename, w, sorted_idxs, imgs, True)
