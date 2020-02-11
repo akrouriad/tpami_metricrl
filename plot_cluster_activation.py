@@ -29,7 +29,8 @@ class DummyAgent(Agent):
             dist = torch.distributions.MultivariateNormal(mu, scale_tril=chol_sigma)
             a = dist.sample()
 
-            return torch.squeeze(a, dim=0).detach().cpu().numpy()
+            # return torch.squeeze(a, dim=0).detach().cpu().numpy()
+            return torch.squeeze(mu, dim=0).detach().cpu().numpy()
 
     def episode_start(self):
         pass
@@ -189,30 +190,33 @@ if __name__ == '__main__':
     horizon = 1000
     gamma = .99
 
-    env_id = 'AntBulletEnv-v0'
-    log_name = 'Results/final_medium/AntBulletEnv-v0/metricrl_c10hcovr_expdTruet0.33snone'
-    # idxs = [0, 2, 3, 6]
-    idxs = [2, 4, 5, 6]
-    plot_default = False
-    seed = 0
-    ratios = [3.5, 1]
-    n_clusters = 10
+    # env_id = 'AntBulletEnv-v0'
+    # log_name = 'Results/final_medium/AntBulletEnv-v0/metricrl_c10hcovr_expdTruet0.33snone'
+    # n_clusters = 10
+    # # idxs = [k for k in range(n_clusters)]
+    # idxs = [5, 4, 6, 2]
+    # plot_default = True
+    # seed = 0
+    # ratios = [3.5, 1]
 
     # env_id = 'HopperBulletEnv-v0'
     # log_name = 'Results/final_medium/HopperBulletEnv-v0/metricrl_c10hcovr_expdTruet1.0snone'
-    # idxs = [9, 4, 6, 0]
-    # plot_default = False
+    # n_clusters = 10
+    # # idxs = [k for k in range(n_clusters)]
+    # idxs = [0, 9, 4]
+    # plot_default = True
     # seed = 12
     # ratios = [3.5, 1]
-    # n_clusters = 10
 
-    # env_id = 'HalfCheetahBulletEnv-v0'
-    # log_name = 'Results/final_medium/HalfCheetahBulletEnv-v0/metricrl_c20hcovr_expdTruet0.33snone'
-    # idxs = [13, 7, 4, 17]
-    # plot_default = False
-    # seed = 4
-    # ratios = [2, 1]
-    # n_clusters = 20
+    env_id = 'HalfCheetahBulletEnv-v0'
+    log_name = 'Results/final_medium/HalfCheetahBulletEnv-v0/metricrl_c10hcovr_expdTruet0.33snone'
+    idxs = [4, 2, 9, 0]
+    # idxs = [k for k in range(10)]
+    # idxs = [0, 3, 4]
+    plot_default = True
+    seed = 2
+    ratios = [2, 1]
+    n_clusters = 10
 
     max_time_all = 350
     max_time_selected = 350

@@ -9,7 +9,7 @@ from mushroom_rl.utils.viewer import ImageViewer
 
 import pygame
 from pygame.locals import *
-
+import imageio
 
 def wait():
     while True:
@@ -30,7 +30,7 @@ def rescale_joint(j, theta_r):
 
 
 def get_image(mdp, scaling, distance, pitch):
-    view_matrix = mdp.env._p.computeViewMatrixFromYawPitchRoll(cameraTargetPosition=[0, 0, 0],
+    view_matrix = mdp.env._p.computeViewMatrixFromYawPitchRoll(cameraTargetPosition=[0, 0, 1.],
                                                                distance=distance,
                                                                yaw=mdp.env._cam_yaw,
                                                                pitch=pitch,
@@ -81,8 +81,10 @@ if __name__ == '__main__':
     #envs = ['HopperBulletEnv-v0', 'Walker2DBulletEnv-v0', 'HalfCheetahBulletEnv-v0', 'AntBulletEnv-v0']
     iteration = 1001
     scaling = 3
-    distance = 2.5
+    # distance = 2.5
+    distance = 3
     pitch = -5
+    # pitch = -20
 
     exp_id = 'final_medium'
     alg_name = 'metricrl'
@@ -90,20 +92,24 @@ if __name__ == '__main__':
     # env_id = 'AntBulletEnv-v0'
     # postfix = 'c10hcovr_expdTruet0.33snone'
     # run_id = 0
+    # cluster_idxs = [5, 4, 6, 2]
 
     # env_id = 'HopperBulletEnv-v0'
     # postfix = 'c10hcovr_expdTruet1.0snone'
     # run_id = 12
+    # cluster_idxs = [0, 9, 4]
 
     env_id = 'HalfCheetahBulletEnv-v0'
-    postfix = 'c20hcovr_expdTruet0.33snone'
-    run_id = 4
+    postfix = 'c10hcovr_expdTruet0.33snone'
+    run_id = 2
+    cluster_idxs = [4, 2, 9, 0]
 
     log_name = os.path.join('Results', exp_id, env_id, alg_name + '_' + postfix)
     print(log_name)
 
     save = True
     save_dir = os.path.join('Results', 'img', env_id)
+    save_dir_gifs = os.path.join(save_dir, 'gifs')
 
     policy_path = os.path.join(log_name, 'net/network-' + str(run_id) + '-' + str(iteration) + '.pth')
     policy_torch = torch.load(policy_path)
@@ -132,12 +138,11 @@ if __name__ == '__main__':
         pygame.image.save(viewer._screen, full_path)
 
     # wait()
-    cluster_idxs = [1, 2, 3, 4, 5, 6]
     # cluster_idxs = [2, 8]
     # cluster_idxs = [8]
     # cluster_idxs = [3]
     # for n, cluster in enumerate(policy_torch.centers.detach().numpy()):
-    for n in cluster_idxs:
+    for clus_order, n in enumerate(cluster_idxs):
         # get Robot object from environment
         cluster = policy_torch.centers[n].detach().numpy()
         obs = env.reset()
@@ -148,26 +153,33 @@ if __name__ == '__main__':
         print(cluster)
 
         set_state(robot, robot_body, cluster)
-
+        obs = robot.calc_state()
         # px = get_image(env, scaling, distance, pitch)
         # viewer.display(px)
-
-        for iterdisp in range(15):
+        gif_length = 5
+        for iterdisp in range(gif_length):
             px = get_image(env, scaling, distance, pitch)
             viewer.display(px)
-            # env.step(policy_torch.means[0].detach().numpy())
             w = policy_torch.get_membership(torch.tensor([obs])).detach().numpy().squeeze()
-            print(w[2], w[8])
+            env.step(policy_torch.means[n].detach().numpy())
+            # print('m3', w[3])
             # if w[n] > .2 or iterdisp < 1:
-            obs, _, _, _ = env.step(policy_torch.get_mean(torch.tensor(obs)).detach().numpy().squeeze())
+            # obs, _, _, _ = env.step(policy_torch.get_mean(torch.tensor(obs)).detach().numpy().squeeze())
             # else:
             #     break
 
 
-        if save:
-            full_path = os.path.join(save_dir, 'cluster-' + str(n) + '.png')
-            os.makedirs(save_dir, exist_ok=True)
-            pygame.image.save(viewer._screen, full_path)
+            if save:
+                full_path = os.path.join(save_dir, 'cluster-' + str(n) + '-' + str(iterdisp) + '.png')
+                os.makedirs(save_dir, exist_ok=True)
+                pygame.image.save(viewer._screen, full_path)
+
+        images = []
+        for iterdisp in range(gif_length):
+            full_path = os.path.join(save_dir, 'cluster-' + str(n) + '-' + str(iterdisp) + '.png')
+            images.append(imageio.imread(full_path))
+        os.makedirs(save_dir_gifs, exist_ok=True)
+        imageio.mimsave(os.path.join(save_dir_gifs, str(clus_order) + '-' + 'cluster-' + str(n) + '.gif'), images)
 
         wrong_state = np.any((cluster - robot.calc_state()) > state_reconstruction_precision)
         print('wrong state? ', wrong_state)
