@@ -189,13 +189,14 @@ if __name__ == '__main__':
     horizon = 1000
     gamma = .99
 
-    # env_id = 'AntBulletEnv-v0'
-    # log_name = 'Results/final_medium/AntBulletEnv-v0/metricrl_c10hcovr_expdTruet0.33snone'
+    env_id = 'AntBulletEnv-v0'
+    log_name = 'Results/final_medium/AntBulletEnv-v0/metricrl_c10hcovr_expdTruet0.33snone'
     # idxs = [0, 2, 3, 6]
-    # plot_default = False
-    # seed = 0
-    # ratios = [3.5, 1]
-    # n_clusters = 10
+    idxs = [2, 4, 5, 6]
+    plot_default = False
+    seed = 0
+    ratios = [3.5, 1]
+    n_clusters = 10
 
     # env_id = 'HopperBulletEnv-v0'
     # log_name = 'Results/final_medium/HopperBulletEnv-v0/metricrl_c10hcovr_expdTruet1.0snone'
@@ -205,13 +206,13 @@ if __name__ == '__main__':
     # ratios = [3.5, 1]
     # n_clusters = 10
 
-    env_id = 'HalfCheetahBulletEnv-v0'
-    log_name = 'Results/final_medium/HalfCheetahBulletEnv-v0/metricrl_c20hcovr_expdTruet0.33snone'
-    idxs = [13, 7, 4, 17]
-    plot_default = False
-    seed = 4
-    ratios = [2, 1]
-    n_clusters = 20
+    # env_id = 'HalfCheetahBulletEnv-v0'
+    # log_name = 'Results/final_medium/HalfCheetahBulletEnv-v0/metricrl_c20hcovr_expdTruet0.33snone'
+    # idxs = [13, 7, 4, 17]
+    # plot_default = False
+    # seed = 4
+    # ratios = [2, 1]
+    # n_clusters = 20
 
     max_time_all = 350
     max_time_selected = 350
@@ -222,9 +223,9 @@ if __name__ == '__main__':
     filename_all = os.path.join(save_path, env_id + '_all.png')
     filename_selected = os.path.join(save_path, env_id + '.png')
 
-    policy = load_policy(log_name, iteration=1001, seed=12)
+    policy = load_policy(log_name, iteration=1001, seed=seed)
 
-    w = get_cluster_activation(env_id, horizon, gamma, policy, dt, n_episodes=1, seed=12)
+    w = get_cluster_activation(env_id, horizon, gamma, policy, dt, n_episodes=1, seed=seed)
 
     imgs = load_cluster_images(env_id, n_clusters)
 

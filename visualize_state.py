@@ -50,7 +50,7 @@ def get_image(mdp, scaling, distance, pitch):
     return rgb_array
 
 
-def set_state(robot, robot_body):
+def set_state(robot, robot_body, cluster):
     z = cluster[0]
     v = cluster[3:6] / 0.3
     r = cluster[6]
@@ -94,6 +94,7 @@ if __name__ == '__main__':
     # env_id = 'HopperBulletEnv-v0'
     # postfix = 'c10hcovr_expdTruet1.0snone'
     # run_id = 12
+
     env_id = 'HalfCheetahBulletEnv-v0'
     postfix = 'c20hcovr_expdTruet0.33snone'
     run_id = 4
@@ -130,21 +131,38 @@ if __name__ == '__main__':
         os.makedirs(save_dir, exist_ok=True)
         pygame.image.save(viewer._screen, full_path)
 
-    wait()
-
-    for n, cluster in enumerate(policy_torch.centers.detach().numpy()):
+    # wait()
+    cluster_idxs = [1, 2, 3, 4, 5, 6]
+    # cluster_idxs = [2, 8]
+    # cluster_idxs = [8]
+    # cluster_idxs = [3]
+    # for n, cluster in enumerate(policy_torch.centers.detach().numpy()):
+    for n in cluster_idxs:
         # get Robot object from environment
-        env.reset()
+        cluster = policy_torch.centers[n].detach().numpy()
+        obs = env.reset()
         robot = env.env.robot
         robot_body = robot.robot_body
 
         print('- Displaying cluster ', n)
         print(cluster)
 
-        set_state(robot, robot_body)
+        set_state(robot, robot_body, cluster)
 
-        px = get_image(env, scaling, distance, pitch)
-        viewer.display(px)
+        # px = get_image(env, scaling, distance, pitch)
+        # viewer.display(px)
+
+        for iterdisp in range(15):
+            px = get_image(env, scaling, distance, pitch)
+            viewer.display(px)
+            # env.step(policy_torch.means[0].detach().numpy())
+            w = policy_torch.get_membership(torch.tensor([obs])).detach().numpy().squeeze()
+            print(w[2], w[8])
+            # if w[n] > .2 or iterdisp < 1:
+            obs, _, _, _ = env.step(policy_torch.get_mean(torch.tensor(obs)).detach().numpy().squeeze())
+            # else:
+            #     break
+
 
         if save:
             full_path = os.path.join(save_dir, 'cluster-' + str(n) + '.png')
@@ -157,4 +175,4 @@ if __name__ == '__main__':
         if wrong_state:
             print(cluster - robot.calc_state())
 
-        wait()
+        # wait()

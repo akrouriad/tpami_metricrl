@@ -96,7 +96,7 @@ if __name__ == '__main__':
     log_name = 'Results/final_medium/HalfCheetahBulletEnv-v0/metricrl_c10hcovr_expdTruet0.33snone'
     seed = 4
 
-    policy = load_policy(log_name, iteration=1001, seed=12)
+    policy = load_policy(log_name, iteration=1001, seed=seed)
 
-    replay(env_id, horizon, gamma, policy, dt=dt, n_episodes=10, seed=12)
+    replay(env_id, horizon, gamma, policy, dt=dt, n_episodes=10, seed=seed)
 
