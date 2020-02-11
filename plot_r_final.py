@@ -181,7 +181,7 @@ if __name__ == '__main__':
     temps = [1., 1., 1., 1.]
     n_clusterss = [5, 10, 20]
     nb_epochs = 500
-    alg_labels = ['Metric-5', 'Metric-10', 'Metric-20', 'PPO', 'TRPO (MLP)']
+    alg_labels = ['Metric-5', 'Metric-10', 'Metric-20', 'PPO', 'TRPO (MLP)', 'TRPO (Linear)']
 
     # xp_name = 'final_medium'
     # envs = ['HopperBulletEnv-v0', 'Walker2DBulletEnv-v0', 'HalfCheetahBulletEnv-v0', 'AntBulletEnv-v0']
@@ -200,7 +200,7 @@ if __name__ == '__main__':
     clus_dels = [True]
     # a_cost_scales = [0., 10.]
     alg_name = 'metricrl'
-    baselines_algs = ['ppo2', 'trpo_mpi'] #'trpo_linear']
+    baselines_algs = ['ppo2', 'trpo_mpi', 'trpo_linear']
     baselines_mushroom_algs = ['PPO', 'TRPO']
 
 
