@@ -168,10 +168,13 @@ if __name__ == '__main__':
     exp_folder = os.path.join(res_folder, xp_name)
     baseline_folder = os.path.join(res_folder, 'baselines')
     baseline_mushroom_folder = os.path.join(res_folder, 'baselines')
-    envs = ['HopperBulletEnv-v0', 'Walker2DBulletEnv-v0', 'HalfCheetahBulletEnv-v0', 'AntBulletEnv-v0']
-    temps = [1., 1., .33, .33]
+    # envs = ['HopperBulletEnv-v0', 'Walker2DBulletEnv-v0', 'HalfCheetahBulletEnv-v0', 'AntBulletEnv-v0']
+    envs = ['AntBulletEnv-v0']
+    # temps = [1., 1., .33, .33]
+    temps = [.33]
     nb_runs = 25
-    n_clusterss = [10, 20, 40]
+    # n_clusterss = [10, 20, 40]
+    n_clusterss = [10]
     # clus_sels = ['old_covr_yetnew']
     clus_sels = ['covr_exp']
     clus_dels = [True]
