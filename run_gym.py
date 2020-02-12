@@ -155,8 +155,6 @@ if __name__ == '__main__':
     #
     # horizon = 1000
 
-
-    clus_sel = 'covr_exp'
     do_delete = True
     max_cmean = 1.
 
