@@ -79,7 +79,7 @@ def load_policy(log_name, iteration, seed):
 
 
 if __name__ == '__main__':
-    dt = 1/5
+    dt = 1/3
     #dt = 0
 
     horizon = 1000
@@ -89,13 +89,13 @@ if __name__ == '__main__':
     # log_name = 'Results/final_medium/AntBulletEnv-v0/metricrl_c10hcovr_expdTruet0.33snone'
     # seed = 0
 
-    env_id = 'HopperBulletEnv-v0'
-    log_name = 'Results/final_medium/HopperBulletEnv-v0/metricrl_c10hcovr_expdTruet1.0snone'
-    seed = 12
+    # env_id = 'HopperBulletEnv-v0'
+    # log_name = 'Results/final_medium/HopperBulletEnv-v0/metricrl_c10hcovr_expdTruet1.0snone'
+    # seed = 12
 
-    # env_id = 'HalfCheetahBulletEnv-v0'
-    # log_name = 'Results/final_medium/HalfCheetahBulletEnv-v0/metricrl_c10hcovr_expdTruet0.33snone'
-    # seed = 2
+    env_id = 'HalfCheetahBulletEnv-v0'
+    log_name = 'Results/final_medium/HalfCheetahBulletEnv-v0/metricrl_c10hcovr_expdTruet0.33snone'
+    seed = 2
 
     policy = load_policy(log_name, iteration=1001, seed=seed)
 
