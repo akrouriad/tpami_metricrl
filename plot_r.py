@@ -24,7 +24,9 @@ def plot_data(x, use_median):
         plt.plot(epochs, mean)
         plt.fill_between(epochs, mean - interval, mean + interval, alpha=.5)
 
-def create_figure(res_folder, subfolder, name, env, all_data, alg_labels, use_median=False):
+
+def create_figure(res_folder, subfolder, name, env, all_data, alg_labels, use_median=False,
+                  legend=False, display=False):
     plt.figure()
     legend_lab = []
     for n, d in zip(alg_labels, all_data):
@@ -32,17 +34,27 @@ def create_figure(res_folder, subfolder, name, env, all_data, alg_labels, use_me
         plot_data(d, use_median)
         legend_lab.append(n)
 
-    plt.legend(legend_lab)
-    plt.suptitle(env)
+    plt.grid(linestyle='dotted')
 
-    fig_name = name + '_' + env + '.png'
+    if legend:
+        plt.legend(legend_lab, fontsize='small', frameon=False)
+
+    plt.xlabel('Epoch')
+    plt.ylabel(name)
+
+    fig_name = name + '_' + env
     fig_path = os.path.join(res_folder, 'plots', subfolder)
     os.makedirs(fig_path, exist_ok=True)
-    plt.savefig(os.path.join(fig_path, fig_name))
+    full_path = os.path.join(fig_path, fig_name + '.png')
+    plt.savefig(full_path,  bbox_inches='tight')
+    if display:
+        plt.suptitle(env)
+        plt.show()
+
     plt.clf()
 
 
-def load_data_base(res_folder, env, subfolder, nb_runs, entropy=True):
+def load_data_base(res_folder, env, subfolder, nb_runs, nb_epochs, entropy=True):
     all_r_a = []
     all_j_a = []
     all_entropy_a = []
@@ -52,6 +64,7 @@ def load_data_base(res_folder, env, subfolder, nb_runs, entropy=True):
         r_filename = 'R-' + str(run) + '.npy'
         e_filename = 'E-' + str(run) + '.npy'
 
+        print(res_folder, env, subfolder, j_filename)
         j_name = os.path.join(res_folder, env, subfolder, j_filename)
         r_name = os.path.join(res_folder, env, subfolder, r_filename)
         e_name = os.path.join(res_folder, env, subfolder, e_filename)
@@ -61,11 +74,11 @@ def load_data_base(res_folder, env, subfolder, nb_runs, entropy=True):
             R = np.load(r_name)
             if entropy:
                 E = np.load(e_name)
-            if R.shape[0] != 1001:
+            if R.shape[0] != nb_epochs + 1:
                 print(r_name, 'wrong shape')
                 print(R.shape, J.shape)
-                J = J[:1001]
-                R = R[:1001]
+                J = J[:nb_epochs+1]
+                R = R[:nb_epochs+1]
             all_j_a.append(J)
             all_r_a.append(R)
             if entropy:
@@ -79,56 +92,14 @@ def load_data_base(res_folder, env, subfolder, nb_runs, entropy=True):
         return all_j_a, all_r_a
 
 
-def load_data_acost(res_folder, env, alg_name, n_clusterss, a_cost_scales, nb_runs):
-    all_j = []
-    all_r = []
-    all_entropy = []
-    alg_labels = []
-
-    for n_clusters in n_clusterss:
-
-        for a_cost_scale in a_cost_scales:
-            alg_label = 'c' + str(n_clusters) + 'a' + str(a_cost_scale)
-            subfolder = alg_name + '_' + alg_label
-
-            all_j_a, all_r_a, all_entropy_a = load_data_base(res_folder, env, subfolder, nb_runs)
-
-            all_j.append(all_j_a)
-            all_r.append(all_r_a)
-            all_entropy.append(all_entropy_a)
-            alg_labels.append(alg_label)
-
-    return all_j, all_r, all_entropy, alg_labels
-
-
-def load_data_entropy(res_folder, env, alg_name, n_clusterss, nb_runs):
-    all_j = []
-    all_r = []
-    all_entropy = []
-    alg_labels = []
-
-    for n_clusters in n_clusterss:
-        alg_label = 'c' + str(n_clusters)
-        subfolder = alg_name + '_' + alg_label
-
-        all_j_a, all_r_a, all_entropy_a = load_data_base(res_folder, env, subfolder, nb_runs)
-
-        all_j.append(all_j_a)
-        all_r.append(all_r_a)
-        all_entropy.append(all_entropy_a)
-        alg_labels.append(alg_label)
-
-    return all_j, all_r, all_entropy, alg_labels
-
-
-def load_data_baselines(res_folder, env, alg_names, nb_runs, entropy=False):
+def load_data_baselines(res_folder, env, alg_names, nb_runs, nb_epochs, entropy=False):
     all_j = []
     all_r = []
 
     for alg_name in alg_names:
         subfolder = alg_name
 
-        all_j_a, all_r_a = load_data_base(res_folder, env, subfolder, nb_runs, entropy=entropy)
+        all_j_a, all_r_a = load_data_base(res_folder, env, subfolder, nb_runs, nb_epochs, entropy=entropy)
 
         all_j.append(all_j_a)
         all_r.append(all_r_a)
@@ -136,7 +107,7 @@ def load_data_baselines(res_folder, env, alg_names, nb_runs, entropy=False):
     return all_j, all_r
 
 
-def load_data_fixedtemp(res_folder, env, alg_name, n_clusterss, nb_runs, clus_sels, clus_dels, temps):
+def load_data_fixedtemp(res_folder, env, alg_name, n_clusterss, nb_runs, nb_epochs, clus_sels, clus_dels, temps):
     all_j = []
     all_r = []
     all_entropy = []
@@ -149,7 +120,7 @@ def load_data_fixedtemp(res_folder, env, alg_name, n_clusterss, nb_runs, clus_se
                     alg_label = 'c' + str(n_clusters) + 'h' + clus_sel + 'd' + str(clus_del) + 't' + str(temp) + 'snone'
                     subfolder = alg_name + '_' + alg_label
                     print(subfolder)
-                    all_j_a, all_r_a, all_entropy_a = load_data_base(res_folder, env, subfolder, nb_runs)
+                    all_j_a, all_r_a, all_entropy_a = load_data_base(res_folder, env, subfolder, nb_runs, nb_epochs)
 
                     all_j.append(all_j_a)
                     all_r.append(all_r_a)
@@ -161,43 +132,42 @@ def load_data_fixedtemp(res_folder, env, alg_name, n_clusterss, nb_runs, clus_se
 
 if __name__ == '__main__':
 
-    plot_mushroom = False
-    # xp_name = 'entropy'
-    xp_name = 'final_medium'
+    plot_baselines = True
+
+    xp_name = 'final_small2'
+    envs = ['BipedalWalker-v2', 'InvertedPendulumBulletEnv-v0', 'Pendulum-v0', 'InvertedPendulumSwingupBulletEnv-v0']
+    temps = [1., 1., 1., 1.]
+    n_clusterss = [5, 10, 20]
+    nb_epochs = 500
+    alg_labels = ['Metric-5', 'Metric-10', 'Metric-20', 'PPO', 'TRPO (MLP)', 'TRPO (Linear)']
+
+    # xp_name = 'final_medium'
+    # envs = ['HopperBulletEnv-v0', 'Walker2DBulletEnv-v0', 'HalfCheetahBulletEnv-v0', 'AntBulletEnv-v0']
+    # temps = [1., 1., .33, .33]
+    # n_clusterss = [10, 20, 40]
+    # nb_epochs = 1000
+    # alg_labels = ['Metric-10', 'Metric-20', 'Metric-40', 'PPO', 'TRPO (MLP)', 'TRPO (Linear)']
+
     res_folder = './Results/'
     exp_folder = os.path.join(res_folder, xp_name)
     baseline_folder = os.path.join(res_folder, 'baselines')
-    baseline_mushroom_folder = os.path.join(res_folder, 'baselines')
-    # envs = ['HopperBulletEnv-v0', 'Walker2DBulletEnv-v0', 'HalfCheetahBulletEnv-v0', 'AntBulletEnv-v0']
-    envs = ['AntBulletEnv-v0']
-    # temps = [1., 1., .33, .33]
-    temps = [.33]
+
     nb_runs = 25
-    # n_clusterss = [10, 20, 40]
-    n_clusterss = [10]
-    # clus_sels = ['old_covr_yetnew']
     clus_sels = ['covr_exp']
     clus_dels = [True]
-    # a_cost_scales = [0., 10.]
     alg_name = 'metricrl'
-    baselines_algs = ['ppo2', 'trpo_linear', 'trpo_mpi']
+    baselines_algs = ['ppo2', 'trpo_mpi', 'trpo_linear']
     baselines_mushroom_algs = ['PPO', 'TRPO']
 
-    # Creating parameters tables
-    # for env in envs:
+    count = 0
     for temp, env in zip(temps, envs):
-        all_j, all_r, all_e, alg_labels = load_data_fixedtemp(exp_folder, env, alg_name, n_clusterss, nb_runs, clus_sels, clus_dels, [temp])
-        if plot_mushroom:
-            b_j, b_r, b_e = load_data_baselines(baseline_mushroom_folder, env, baselines_algs, nb_runs, entropy=True)
-            all_e += b_e
-            n_missing_entropy = 0
-        else:
-            b_j, b_r = load_data_baselines(baseline_folder, env, baselines_algs, nb_runs)
-            n_missing_entropy = -len(baselines_algs)
+        all_j, all_r, all_e, _ = load_data_fixedtemp(exp_folder, env, alg_name, n_clusterss, nb_runs, nb_epochs, clus_sels, clus_dels, [temp])
 
-        all_j += b_j
-        all_r += b_r
-        alg_labels += baselines_algs
+        if plot_baselines:
+            b_j, b_r = load_data_baselines(baseline_folder, env, baselines_algs, nb_runs, nb_epochs)
+            all_j += b_j
+            all_r += b_r
 
-        create_figure(res_folder, xp_name, 'R', env, all_r, alg_labels)
-        create_figure(res_folder, xp_name, 'E', env, all_e, alg_labels[:n_missing_entropy])
+        create_figure(res_folder, xp_name, 'R', env, all_r, alg_labels,
+                      legend=(count + 1 == len(envs)))
+        count += 1
