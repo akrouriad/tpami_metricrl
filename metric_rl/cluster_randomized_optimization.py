@@ -43,9 +43,6 @@ class BoltzmannSampler(Sampler):
         w /= np.sum(w)
 
         self._w = w
-        # print('w: ', w)
-        # print('min w: ', w.min(), 'max w', w.max())
-
 
 
 def randomized_swap_optimization(c_0, candidates, cluster_h, sample_h,
@@ -56,14 +53,9 @@ def randomized_swap_optimization(c_0, candidates, cluster_h, sample_h,
     print('Running random swapping routine')
     print('n_clusters: ', len(cluster_h), ', n_candidates: ', len(sample_h))
     print('n_swaps: ', n_swaps, ', n_samples: ', n_samples)
-    # print('cluster_h', cluster_h)
-    # print('sample_h', sample_h)
     print('---')
 
-    #cluster_index_sampler_data = dict(sampling_class=BoltzmannSampler, params=dict(beta=1.0))
     cluster_index_sampler_data = dict(sampling_class=PolynomialSampling, params=dict(exponent=1))
-
-    # cluster_center_sampler_data = dict(sampling_class=BoltzmannSampler, params=dict(beta=1.0))
     cluster_center_sampler_data = dict(sampling_class=PolynomialSampling, params=dict(exponent=1))
 
     cluster_index_sampler = \
@@ -82,19 +74,9 @@ def randomized_swap_optimization(c_0, candidates, cluster_h, sample_h,
             c_i[cluster_index] = candidates[candidate_index]
 
         if bound_function(c_i):
-            v = evaluation_function(c_i, cluster_indexes, candidate_indexes)
+            v = evaluation_function(c_i)
             if v > max_v:
                 max_v = v
                 c_best = c_i
 
     return c_best
-
-
-
-
-
-
-
-
-
-

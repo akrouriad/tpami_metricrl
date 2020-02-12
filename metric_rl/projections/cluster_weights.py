@@ -1,5 +1,5 @@
 import torch
-from .gaussian_proj import mean_diff
+from .gaussian import mean_diff
 
 
 def cweight_mean_proj(w, means, wq, old_means, old_prec, epsilon):
@@ -18,5 +18,5 @@ def cweight_mean_proj(w, means, wq, old_means, old_prec, epsilon):
         else:
             eta2 = torch.tensor(0.)
         eta = torch.max(eta1, eta2)
-        # eta = eta1
+
     return eta

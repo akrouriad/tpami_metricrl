@@ -54,7 +54,6 @@ class MetricRegressor(nn.Module):
         return w.matmul(self.get_cmeans())
 
     def get_cmeans(self):
-        # return torch.tanh(self.means)
         return self.means
 
     def get_chol(self):
