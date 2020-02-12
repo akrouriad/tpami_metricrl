@@ -164,7 +164,7 @@ if __name__ == '__main__':
                                                 n_clusters=n_clusters,
                                                 horizon=horizon, gamma=gamma,
                                                 n_epochs=1000, n_steps=3000, n_steps_per_fit=3000,
-                                                n_episodes_test=1, seed=seed, log_name=log_name,
+                                                n_episodes_test=5, seed=seed, log_name=log_name,
                                                 do_delete=do_delete, temp=temp)
                             for seed in range(n_experiments))
 
