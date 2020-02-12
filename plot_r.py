@@ -135,7 +135,7 @@ if __name__ == '__main__':
     plot_baselines = True
 
     xp_name = 'final_small2'
-    envs = ['BipedalWalker-v2', 'InvertedPendulumBulletEnv-v0', 'Pendulum-v0', 'InvertedPendulumSwingupBulletEnv-v0']
+    envs = ['BipedalWalker-v2', 'Pendulum-v0', 'InvertedPendulumSwingupBulletEnv-v0', 'InvertedPendulumBulletEnv-v0']
     temps = [1., 1., 1., 1.]
     n_clusterss = [5, 10, 20]
     nb_epochs = 500
