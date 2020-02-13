@@ -20,11 +20,11 @@ from .cluster_randomized_optimization import randomized_swap_optimization
 class MetricRL(Agent):
     def __init__(self, mdp_info, policy_params, critic_params,
                  actor_optimizer, n_epochs_per_fit, batch_size,
-                 entropy_profile, max_kl, lam, n_samples=2000, critic_fit_params=None, do_delete=False, squash='none'):
+                 entropy_profile, max_kl, lam, n_samples=2000, critic_fit_params=None, do_delete=False):
         self._critic_fit_params = dict() if critic_fit_params is None else critic_fit_params
 
         policy = MetricPolicy(mdp_info.observation_space.shape,
-                              mdp_info.action_space.shape, squash=squash,
+                              mdp_info.action_space.shape,
                               **policy_params)
 
         self._use_cuda = policy_params['use_cuda'] if 'use_cuda' in policy_params else False
@@ -50,7 +50,6 @@ class MetricRL(Agent):
 
         self._n_swaps = float(policy.n_clusters)
         self._n_samples = n_samples
-        self._squash = squash
 
         self._iter = 0
         super().__init__(mdp_info, policy)
@@ -67,7 +66,6 @@ class MetricRL(Agent):
         # Get tensors
         obs = to_float_tensor(x, self._use_cuda)
         act = to_float_tensor(u,  self._use_cuda)
-        act_raw = to_float_tensor(np.arctanh(u), self._use_cuda) if self._squash == 'tanh' else act.clone()
         v, adv = get_targets(self._critic, x, xn, r, absorbing, last, self.mdp_info.gamma, self._lambda,
                              prediction='min')
         adv = (adv - np.mean(adv)) / (np.std(adv) + 1e-8)
@@ -88,12 +86,9 @@ class MetricRL(Agent):
                    cmeans=self.policy.get_cmeans_t().clone().detach(),
                    means=self.policy.get_mean_t(obs).detach(),
                    pol_dist=self.policy.distribution_t(obs),
+                   log_p=self.policy.log_prob_t(obs, act).clone().detach(),
                    membership=self.policy.get_membership_t(obs).detach(),
                    **utils_from_chol(old_chol))
-        if self._squash == 'tanh':
-            old['log_p'] = self.policy.log_prob_t(obs, act, act_raw).clone().detach()
-        else:
-            old['log_p'] = self.policy.log_prob_t(obs, act).clone().detach()
 
         entropy_lb = self._e_profile.get_e_lb()
 
@@ -101,7 +96,7 @@ class MetricRL(Agent):
 
         # Optimize cw, mean and cov
         if self._iter % 2 == 0:
-            self._update_all_parameters(obs, act, act_raw, adv_t, old, entropy_lb)
+            self._update_all_parameters(obs, act, adv_t, old, entropy_lb)
         else:
             # Swap clusters
             swapped = self._random_swap_clusters(obs, old, act, adv_t)
@@ -117,12 +112,12 @@ class MetricRL(Agent):
                 # Optimize mean and covariance
                 print('doing partial update')
                 old['intermediate_cmeans'] = self.policy.get_cmeans_t().clone().detach()
-                self._update_mean_n_cov(obs, act, act_raw, adv_t, old, entropy_lb)
+                self._update_mean_n_cov(obs, act, adv_t, old, entropy_lb)
                 full_batch_proj = False
             else:
                 # Optimize cw, mean and cov
                 print('doing full update')
-                self._update_all_parameters(obs, act, act_raw, adv_t, old, entropy_lb)
+                self._update_all_parameters(obs, act, adv_t, old, entropy_lb)
 
         # Actor Update
         if full_batch_proj:
@@ -152,12 +147,12 @@ class MetricRL(Agent):
                 ba_ind += 1
         tqdm.write('added {} clusters'.format(ba_ind))
 
-    def _update_mean_n_cov(self, obs, act, act_raw, adv_t, old, entropy_lb):
+    def _update_mean_n_cov(self, obs, act, adv_t, old, entropy_lb):
         # Compute mean projection (nu)
         intermediate_means = self.policy.get_mean_t(obs).detach()
         for epoch in range(self._n_epochs_per_fit):
-            for obs_i, act_i, act_raw_i, wq_i, old_means_i, old_log_p_i, adv_i, intermediate_means_i in \
-                    minibatch_generator(self._batch_size, obs, act, act_raw, old['w'], old['means'], old['log_p'], adv_t, intermediate_means):
+            for obs_i, act_i, wq_i, old_means_i, old_log_p_i, adv_i, intermediate_means_i in \
+                    minibatch_generator(self._batch_size, obs, act, old['w'], old['means'], old['log_p'], adv_t, intermediate_means):
 
                 if mean_diff(intermediate_means_i, old_means_i, old['prec']) < self._max_kl - 1e-6:
                     for opt in self._actor_optimizers[1:]:
@@ -173,18 +168,12 @@ class MetricRL(Agent):
                     proj_distrib = torch.distributions.MultivariateNormal(proj_d['means'], scale_tril=proj_d['chol'])
 
                     # Compute loss
-                    if self._squash == 'tanh':
-                        prob_ratio = torch.exp(MetricPolicy.log_prob_from_distrib(proj_distrib, act_i, act_raw_i) - old_log_p_i)
-                    else:
-                        prob_ratio = torch.exp(MetricPolicy.log_prob_from_distrib(proj_distrib, act_i) - old_log_p_i)
+                    prob_ratio = torch.exp(proj_distrib.log_prob(act_i)[:, None] - old_log_p_i)
                     loss = -torch.mean(prob_ratio * adv_i)
                     loss.backward()
 
                     for opt in self._actor_optimizers[1:]:
                         opt.step()
-
-                    if self._squash == 'tanh' or self._squash == 'clip':
-                        self.policy.set_cmeans_t(self.policy.get_cmeans_t())
 
     def _cleanup(self, kl_ub, obs, old_pol_data, adv, act):
         cws = torch.sort(self.policy.get_cweights_t().clone())
@@ -313,10 +302,10 @@ class MetricRL(Agent):
             print('Nb swapped clusters: 0. KL: 0.0')
         return swapped
 
-    def _update_all_parameters(self, obs, act, act_raw, adv_t, old, entropy_lb):
+    def _update_all_parameters(self, obs, act, adv_t, old, entropy_lb):
         for epoch in range(self._n_epochs_per_fit):
-            for obs_i, act_i, act_raw_i, wq_i, old_means_i, old_log_p_i, adv_i in \
-                    minibatch_generator(self._batch_size, obs, act, act_raw, old['w'], old['means'], old['log_p'], adv_t):
+            for obs_i, act_i, wq_i, old_means_i, old_log_p_i, adv_i in \
+                    minibatch_generator(self._batch_size, obs, act, old['w'], old['means'], old['log_p'], adv_t):
                 for opt in self._actor_optimizers:
                     opt.zero_grad()
 
@@ -339,18 +328,12 @@ class MetricRL(Agent):
                 proj_distrib = torch.distributions.MultivariateNormal(proj_d['means'], scale_tril=proj_d['chol'])
 
                 # Compute loss
-                if self._squash == 'tanh':
-                    prob_ratio = torch.exp(MetricPolicy.log_prob_from_distrib(proj_distrib, act_i, act_raw_i) - old_log_p_i)
-                else:
-                    prob_ratio = torch.exp(MetricPolicy.log_prob_from_distrib(proj_distrib, act_i) - old_log_p_i)
+                prob_ratio = torch.exp(proj_distrib.log_prob(act_i)[:, None] - old_log_p_i)
                 loss = -torch.mean(prob_ratio * adv_i)
                 loss.backward()
 
                 for opt in self._actor_optimizers:
                     opt.step()
-
-                if self._squash == 'tanh' or self._squash == 'clip':
-                    self.policy.set_cmeans_t(self.policy.get_cmeans_t())
 
     def _full_batch_projection_all_par(self, obs, old, entropy_lb):
         # Get Basics stuff
