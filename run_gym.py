@@ -136,15 +136,15 @@ if __name__ == '__main__':
     gamma = .99
 
     # Pybullet
-    # env_id = 'AntBulletEnv-v0'
+    env_id = 'AntBulletEnv-v0'
     # env_id = 'HalfCheetahBulletEnv-v0'
-    # temp = .33
-    # horizon = 1000
+    temp = .33
+    horizon = 1000
 
     # Bipedal Walker
-    env_id = 'BipedalWalker-v2'
-    horizon = 1600
-    temp = 1.
+    # env_id = 'BipedalWalker-v2'
+    # horizon = 1600
+    # temp = 1.
 
     do_delete = True
 
