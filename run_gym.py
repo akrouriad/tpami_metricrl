@@ -86,6 +86,7 @@ def experiment(env_id, n_clusters, horizon, seed, gamma=.99, n_epochs=1000, n_st
 
     logger.save(network=agent.policy._regressor, seed=seed)
 
+
 def get_parameters(n_clusters, temp):
 
     policy_params = dict(n_clusters=n_clusters,
@@ -128,35 +129,24 @@ if __name__ == '__main__':
     n_experiments = 1
     n_jobs = n_experiments
 
-    # n_clusters = 10
+    # n_clusters = 40
     # n_clusters = 20
     n_clusters = 10
 
     gamma = .99
 
+    # Pybullet
+    env_id = 'AntBulletEnv-v0'
+    # env_id = 'HalfCheetahBulletEnv-v0'
+    temp = .33
+    horizon = 1000
+
     # Bipedal Walker
-    env_id = 'BipedalWalker-v2'
-    horizon = 1600
-    temp = 1.
-
-
-    # Pybullet small
-    # env_id = 'HopperBulletEnv-v0'
-    # env_id = 'InvertedPendulumSwingupBulletEnv-v0'
-    # env_id = 'InvertedPendulumBulletEnv-v0'
-    # env_id = 'InvertedDoublePendulumBulletEnv-v0'
+    # env_id = 'BipedalWalker-v2'
+    # horizon = 1600
     # temp = 1.
 
-    # Pybullet big
-    # env_id = 'HalfCheetahBulletEnv-v0'
-    # env_id = 'AntBulletEnv-v0'
-    # env_id = 'HumanoidBulletEnv-v0'
-    # temp = .33
-    #
-    # horizon = 1000
-
     do_delete = True
-    max_cmean = 1.
 
     log_name = generate_log_folder(env_id, 'metric', str(n_clusters), True)
     print('log name', log_name)
@@ -167,4 +157,3 @@ if __name__ == '__main__':
                                                 n_episodes_test=5, seed=seed, log_name=log_name,
                                                 do_delete=do_delete, temp=temp)
                             for seed in range(n_experiments))
-
