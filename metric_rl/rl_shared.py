@@ -21,16 +21,6 @@ class TwoPhaseEntropProfile:
             return self._e_thresh - self._iter * self._e_reduc
 
 
-class SinglePhaseEntropProfile:
-    def __init__(self, policy, e_reduc):
-        self._e_lb = policy.entropy()
-        self._e_reduc = e_reduc
-
-    def get_e_lb(self):
-        self._e_lb -= self._e_reduc
-        return self._e_lb
-
-
 class MLP(nn.Module):
     def __init__(self, input_shape, output_shape, size_list, activation_list=None, preproc=None, **kwargs):
         super().__init__()
