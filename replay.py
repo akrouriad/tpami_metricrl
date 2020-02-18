@@ -12,8 +12,9 @@ from mushroom_rl.utils.torch import to_float_tensor
 
 
 class DummyAgent(Agent):
-    def __init__(self, torch_policy, dt):
+    def __init__(self, torch_policy, dt, deterministic=True):
         self._regressor = torch_policy
+        self._deterministic = deterministic
         self._dt = dt
 
     def draw_action(self, state):
@@ -23,11 +24,14 @@ class DummyAgent(Agent):
             s = to_float_tensor(np.atleast_2d(state), False)
 
             mu, chol_sigma = self._regressor(s)
-            dist = torch.distributions.MultivariateNormal(mu, scale_tril=chol_sigma)
-            a = dist.sample()
 
-            # return torch.squeeze(a, dim=0).detach().cpu().numpy()
-            return torch.squeeze(mu, dim=0).detach().cpu().numpy()
+            if self._deterministic:
+                return torch.squeeze(mu, dim=0).detach().cpu().numpy()
+            else:
+                dist = torch.distributions.MultivariateNormal(mu, scale_tril=chol_sigma)
+                a = dist.sample()
+
+                return torch.squeeze(a, dim=0).detach().cpu().numpy()
 
     def episode_start(self):
         pass
@@ -43,7 +47,9 @@ def replay(env_id, horizon, gamma, torch_policy, dt, n_episodes, seed):
     torch.set_num_threads(1)
 
     mdp = GymFixed(env_id, horizon, gamma)
-    mdp.render()
+
+    if 'BulletEnv-v0' in env_id:
+        mdp.render()
 
     # Set environment seed
     mdp.env.seed(seed)
@@ -68,6 +74,12 @@ def replay(env_id, horizon, gamma, torch_policy, dt, n_episodes, seed):
     print('w: ', w.detach().numpy(), ' top: ', top_w.detach().numpy())
     print('c: ', w.detach().numpy(), ' top: ', top_c.detach().numpy())
 
+    if env_id == 'Pendulum-v0':
+        for run in range(n_episodes):
+            print(np.argmax(
+                agent._regressor.get_membership(torch.tensor(s)).detach().numpy()[100*run:100*(run+1), :], axis=1))
+
+
     print('##################################################################################################')
 
 
@@ -79,25 +91,33 @@ def load_policy(log_name, iteration, seed):
 
 
 if __name__ == '__main__':
-    dt = 1/3
+    dt = 1/60
     #dt = 0
 
-    horizon = 1000
+    horizon = 100
     gamma = .99
 
     # env_id = 'AntBulletEnv-v0'
     # log_name = 'Results/final_medium/AntBulletEnv-v0/metricrl_c10hcovr_expdTruet0.33snone'
     # seed = 0
+    # iteration = 1001
 
     # env_id = 'HopperBulletEnv-v0'
     # log_name = 'Results/final_medium/HopperBulletEnv-v0/metricrl_c10hcovr_expdTruet1.0snone'
     # seed = 12
+    # iteration = 1001
 
-    env_id = 'HalfCheetahBulletEnv-v0'
-    log_name = 'Results/final_medium/HalfCheetahBulletEnv-v0/metricrl_c10hcovr_expdTruet0.33snone'
-    seed = 2
+    # env_id = 'HalfCheetahBulletEnv-v0'
+    # log_name = 'Results/final_medium/HalfCheetahBulletEnv-v0/metricrl_c10hcovr_expdTruet0.33snone'
+    # seed = 2
+    # iteration = 1001
 
-    policy = load_policy(log_name, iteration=1001, seed=seed)
+    env_id = 'Pendulum-v0'
+    log_name = 'Results/final_small2/Pendulum-v0/metricrl_c5hcovr_expdTruet1.0snone'
+    seed = 15
+    iteration = 501
+
+    policy = load_policy(log_name, iteration=iteration, seed=seed)
 
     replay(env_id, horizon, gamma, policy, dt=dt, n_episodes=10, seed=seed)
 
