@@ -56,17 +56,20 @@ def visualize_cluster(viewer, env, cluster):
 
     pygame.display.flip()
 
+
 if __name__ == '__main__':
-    log_name = 'Results/final_small2/Pendulum-v0/metricrl_c5hcovr_expdTruet1.0snone'
     env_id = 'Pendulum-v0'
-    run_id = 15
+    # log_name = 'Results/final_small2/Pendulum-v0/metricrl_c5hcovr_expdTruet1.0snone'
+    # seed = 15
+    log_name = 'Results/final_small2/Pendulum-v0/metricrl_c10hcovr_expdTruet1.0snone'
+    seed = 3
     iteration = 501
 
     save = True
     save_dir = os.path.join('Results', 'img', env_id)
     save_dir_gifs = os.path.join(save_dir, 'gifs')
 
-    policy_path = os.path.join(log_name, 'net/network-' + str(run_id) + '-' + str(iteration) + '.pth')
+    policy_path = os.path.join(log_name, 'net/network-' + str(seed) + '-' + str(iteration) + '.pth')
     policy_torch = torch.load(policy_path)
 
     state_reconstruction_precision = 1e-7

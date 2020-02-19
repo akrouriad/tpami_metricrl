@@ -37,7 +37,9 @@ def generate_memberships(policy, n_samples):
 
 def plot_membership_mesh(theta, theta_dot, w, s, transparency=False):
 
-    colors = ['Blues', 'Reds', 'Greens', 'Purples', 'Oranges', 'Greys']
+    colors = ['Blues', 'Reds', 'Greens', 'Purples', 'Oranges',
+              'pink', 'copper', 'Spectral', 'rainbow', 'ocean',
+              'Greys']
     fig = mlab.figure(size=(500, 500))
 
     ax_ranges = [-np.pi, np.pi, -8, 8, 0, 1]
@@ -85,8 +87,10 @@ def parse_states(states):
 
 
 if __name__ == '__main__':
-    log_name = 'Results/final_small2/Pendulum-v0/metricrl_c5hcovr_expdTruet1.0snone'
-    seed = 15
+    # log_name = 'Results/final_small2/Pendulum-v0/metricrl_c5hcovr_expdTruet1.0snone'
+    # seed = 15
+    log_name = 'Results/final_small2/Pendulum-v0/metricrl_c10hcovr_expdTruet1.0snone'
+    seed = 3
 
     policy = load_policy(log_name, iteration=501, seed=seed)
     theta, theta_dot, w = generate_memberships(policy, n_samples=1000)

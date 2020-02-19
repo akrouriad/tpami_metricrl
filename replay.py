@@ -120,8 +120,10 @@ if __name__ == '__main__':
     # iteration = 1001
 
     env_id = 'Pendulum-v0'
-    log_name = 'Results/final_small2/Pendulum-v0/metricrl_c5hcovr_expdTruet1.0snone'
-    seed = 15
+    # log_name = 'Results/final_small2/Pendulum-v0/metricrl_c5hcovr_expdTruet1.0snone'
+    # seed = 15
+    log_name = 'Results/final_small2/Pendulum-v0/metricrl_c10hcovr_expdTruet1.0snone'
+    seed = 3
     iteration = 501
 
     policy = load_policy(log_name, iteration=iteration, seed=seed)
