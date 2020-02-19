@@ -5,15 +5,10 @@ import pybullet_envs
 import pybullet
 import gym
 
-from mushroom_rl.utils.viewer import ImageViewer
+from mushroom_rl.utils.viewer import Viewer
 
 import pygame
 from pygame.locals import *
-
-
-def set_state(env, cluster, action):
-    env.env.state = cluster
-    env.env.last_u = action/2
 
 
 def wait():
@@ -26,6 +21,40 @@ def wait():
             if event.type == KEYDOWN and event.key == K_RETURN:
                 return
 
+
+def obs_to_state(obs):
+    cos_theta = obs[0]
+    sin_theta = obs[1]
+    theta = np.arctan2(sin_theta, cos_theta)
+    theta_dot = obs[2]
+
+    state = np.array([theta, theta_dot])
+
+    return state
+
+
+def set_state(env, cluster, action):
+    state = obs_to_state(cluster)
+
+    env.env.state = state
+    env.env.last_u = action/2
+
+
+def visualize_cluster(viewer, env, cluster):
+    set_state(env, cluster, action)
+    img = env.render(mode='rgb_array')
+    transposed = np.transpose(img, (1, 0, 2))
+    viewer.background_image(transposed)
+
+    center = [5, 5]
+    torque = cluster[2]
+    max_torque = 8
+    max_radius = 5
+
+    viewer.torque_arrow(center, torque, max_torque,
+                        max_radius, color=(255, 0, 0), width=5)
+
+    pygame.display.flip()
 
 if __name__ == '__main__':
     log_name = 'Results/final_small2/Pendulum-v0/metricrl_c5hcovr_expdTruet1.0snone'
@@ -46,7 +75,8 @@ if __name__ == '__main__':
     env = gym.make(env_id)
     env._max_episode_steps = np.inf
 
-    viewer = ImageViewer((500, 500), 1 / 30)
+    viewer = Viewer(10, 10)
+
 
     env.reset()
     env.step(np.zeros(1))
@@ -61,14 +91,10 @@ if __name__ == '__main__':
         action = policy_torch.means[n].detach().numpy()
         env.reset()
 
-        print(cluster, action)
-
         print('- Displaying cluster ', n)
-        print(cluster)
+        print(obs_to_state(cluster), action)
 
-        set_state(env, cluster, action)
-        img = env.render(mode='rgb_array')
-        viewer.display(img)
+        visualize_cluster(viewer, env, cluster)
 
         if save:
             full_path = os.path.join(save_dir, 'cluster-' + str(n) + '.png')

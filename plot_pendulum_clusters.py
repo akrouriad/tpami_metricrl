@@ -1,8 +1,10 @@
 import os
 import torch
 import numpy as np
+import pickle
 
 from mayavi import mlab
+from mushroom_rl.utils.dataset import parse_dataset
 
 
 def load_policy(log_name, iteration, seed):
@@ -33,7 +35,7 @@ def generate_memberships(policy, n_samples):
     return theta, theta_dot, w
 
 
-def plot_membership_mesh(theta, theta_dot, w, transparency=False):
+def plot_membership_mesh(theta, theta_dot, w, s, transparency=False):
 
     colors = ['Blues', 'Reds', 'Greens', 'Purples', 'Oranges', 'Greys']
     fig = mlab.figure(size=(500, 500))
@@ -41,6 +43,12 @@ def plot_membership_mesh(theta, theta_dot, w, transparency=False):
     ax_ranges = [-np.pi, np.pi, -8, 8, 0, 1]
     ax_scale = [1/np.pi, 1/8, 2.0]
     ax_extent = ax_ranges * np.repeat(ax_scale, 2)
+
+    x = s[:, 0] + np.pi
+    y = s[:, 1]
+    z = np.zeros_like(x)-0.023
+    l = mlab.plot3d(x, y, z, tube_radius=0.025, extent=ax_extent)
+    l.actor.actor.scale = ax_scale
 
     for i in range(w.shape[-1]):
         surf = mlab.surf(theta.T, theta_dot.T, w[:, :, i].T, colormap=colors[i], extent=ax_extent)
@@ -58,10 +66,10 @@ def plot_membership_mesh(theta, theta_dot, w, transparency=False):
     mlab.show()
 
 
-def parse_cluster_centers(policy):
-    compressed_centers = np.empty((policy.n_clusters, 2))
-    for i in range(policy.n_clusters):
-        cluster = policy.centers[i]
+def parse_states(states):
+    compressed_states = np.empty((len(states), 2))
+    for i in range(len(states)):
+        cluster = states[i]
 
         cos_theta = cluster[0]
         sin_theta = cluster[1]
@@ -69,11 +77,11 @@ def parse_cluster_centers(policy):
         theta = np.arctan2(sin_theta, cos_theta)
         theta_dot = cluster[-1]
 
-        compressed_cluster = np.array([theta, theta_dot])
+        compressed_state = np.array([theta, theta_dot])
 
-        compressed_centers[i] = compressed_cluster
+        compressed_states[i] = compressed_state
 
-    return compressed_centers
+    return compressed_states
 
 
 if __name__ == '__main__':
@@ -82,8 +90,18 @@ if __name__ == '__main__':
 
     policy = load_policy(log_name, iteration=501, seed=seed)
     theta, theta_dot, w = generate_memberships(policy, n_samples=1000)
-    centers = parse_cluster_centers(policy)
+    centers = parse_states(policy.centers)
 
-    plot_membership_mesh(theta, theta_dot, w, transparency=True)
+    with open('dataset.pkl', 'rb') as file:
+        dataset = pickle.load(file)
+
+    s, *_ = parse_dataset(dataset)
+    s_new = parse_states(s)
+
+    plot_membership_mesh(theta, theta_dot, w, s_new, transparency=True)
+
+
+
+
 
 

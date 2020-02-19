@@ -1,6 +1,7 @@
 import os
 import torch
 import time
+import pickle
 
 import numpy as np
 
@@ -75,12 +76,17 @@ def replay(env_id, horizon, gamma, torch_policy, dt, n_episodes, seed):
     print('c: ', w.detach().numpy(), ' top: ', top_c.detach().numpy())
 
     if env_id == 'Pendulum-v0':
+        w = agent._regressor.get_membership(torch.tensor(s)).detach().numpy()
+        w_default = np.expand_dims(1 - np.sum(w, axis=1), -1)
+
+        w_tot = np.concatenate([w, w_default], axis=1)
         for run in range(n_episodes):
-            print(np.argmax(
-                agent._regressor.get_membership(torch.tensor(s)).detach().numpy()[100*run:100*(run+1), :], axis=1))
+            print(np.argmax(w_tot[100*run:100*(run+1), :], axis=1))
 
 
     print('##################################################################################################')
+
+    return dataset
 
 
 def load_policy(log_name, iteration, seed):
@@ -91,6 +97,7 @@ def load_policy(log_name, iteration, seed):
 
 
 if __name__ == '__main__':
+    save = True
     dt = 1/60
     #dt = 0
 
@@ -119,5 +126,9 @@ if __name__ == '__main__':
 
     policy = load_policy(log_name, iteration=iteration, seed=seed)
 
-    replay(env_id, horizon, gamma, policy, dt=dt, n_episodes=10, seed=seed)
+    dataset = replay(env_id, horizon, gamma, policy, dt=dt, n_episodes=1, seed=seed)
+
+    if save:
+        with open('dataset.pkl', 'wb') as file:
+            pickle.dump(dataset, file)
 
