@@ -3,8 +3,8 @@ import numpy as np
 from tqdm import tqdm, trange
 
 from mushroom_rl.core import Core
+from mushroom_rl.environments import Gym
 from mushroom_rl.algorithms.actor_critic import PPO, TRPO
-from metric_rl.gym_fixed import GymFixed
 from mushroom_rl.policy import GaussianTorchPolicy
 from mushroom_rl.utils.dataset import compute_J
 
@@ -24,7 +24,7 @@ def experiment(alg_name, env_id, horizon, gamma, n_epochs, n_steps, n_steps_per_
 
     logger = Logger(log_name, 'net')
 
-    mdp = GymFixed(env_id, horizon, gamma)
+    mdp = Gym(env_id, horizon, gamma)
 
     # Set environment seed
     mdp.env.seed(seed)
@@ -105,7 +105,7 @@ def experiment(alg_name, env_id, horizon, gamma, n_epochs, n_steps, n_steps_per_
 
 
 def get_alg_and_parameters(alg_name):
-    if alg_name is 'PPO':
+    if alg_name == 'PPO':
         alg_params = dict(actor_optimizer={'class': optim.Adam,
                                        'params': {'lr': 3e-4}},
                           n_epochs_policy=10,
@@ -116,7 +116,7 @@ def get_alg_and_parameters(alg_name):
 
         return PPO, alg_params
 
-    elif alg_name is 'TRPO':
+    elif alg_name == 'TRPO':
         alg_params = dict(ent_coeff=0.0,
                           max_kl=.01,
                           lam=.95,

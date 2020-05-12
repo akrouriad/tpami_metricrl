@@ -9,7 +9,7 @@ from matplotlib import rc
 
 from mushroom_rl.algorithms import Agent
 from mushroom_rl.core import Core
-from metric_rl.gym_fixed import GymFixed
+from mushroom_rl.environments import Gym
 from mushroom_rl.utils.dataset import parse_dataset
 from mushroom_rl.utils.torch import to_float_tensor
 
@@ -45,7 +45,7 @@ def get_cluster_activation(env_id, horizon, gamma, torch_policy, dt, n_episodes,
     torch.manual_seed(seed)
     torch.set_num_threads(1)
 
-    mdp = GymFixed(env_id, horizon, gamma)
+    mdp = Gym(env_id, horizon, gamma)
     if dt > 0:
         mdp.render()
 

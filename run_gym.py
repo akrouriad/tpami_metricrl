@@ -6,7 +6,7 @@ import numpy as np
 from tqdm import tqdm
 
 from mushroom_rl.core import Core
-from metric_rl.gym_fixed import GymFixed
+from mushroom_rl.environments import Gym
 from mushroom_rl.utils.dataset import compute_J
 
 from metric_rl.metric_rl import MetricRL
@@ -27,7 +27,7 @@ def experiment(env_id, n_clusters, horizon, seed, gamma=.99, n_epochs=1000, n_st
     params = get_parameters(n_clusters, temp)
     save_parameters(log_name, params)
 
-    mdp = GymFixed(env_id, horizon, gamma)
+    mdp = Gym(env_id, horizon, gamma)
 
     # Set environment seed
     mdp.env.seed(seed)
