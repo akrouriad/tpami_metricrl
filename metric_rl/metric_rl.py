@@ -315,7 +315,7 @@ class MetricRL(Agent):
                 chol = self.policy.get_chol_t()
 
                 # Compute cluster weights projection (eta)
-                eta = cweight_mean_proj(w, means_i, wq_i, old_means_i, old['prec'], self._max_kl)
+                eta = cweight_mean_proj(self.policy.w_default, w, means_i, wq_i, old_means_i, old['prec'], self._max_kl)
                 cweights_eta = eta * self.policy.get_cweights_t() + (1 - eta) * old['cweights']
 
                 # Compute mean projection (nu)
@@ -342,7 +342,7 @@ class MetricRL(Agent):
         chol = self.policy.get_chol_t()
 
         # Compute cluster weights projection (eta)
-        eta = cweight_mean_proj(w, means, old['w'], old['means'], old['prec'], self._max_kl)
+        eta = cweight_mean_proj(self.policy.w_default, w, means, old['w'], old['means'], old['prec'], self._max_kl)
         cweights_eta = eta * self.policy.get_cweights_t() + (1 - eta) * torch.abs(old['cweights'])
         self.policy.set_cweights_t(cweights_eta)
 

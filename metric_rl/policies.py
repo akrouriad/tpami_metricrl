@@ -21,7 +21,7 @@ class Grad1Abs(torch.autograd.Function):
 
 
 class MetricRegressor(nn.Module):
-    def __init__(self, input_shape, output_shape, n_clusters, std_0, temp=1., **kwargs):
+    def __init__(self, input_shape, output_shape, n_clusters, std_0, temp=1., w_default=1e-3, **kwargs):
         super().__init__()
 
         s_dim = input_shape[0]
@@ -36,6 +36,7 @@ class MetricRegressor(nn.Module):
 
         self._cluster_count = 0
         self._n_clusters = n_clusters
+        self.w_default = w_default
 
     def forward(self, s):
         if self._cluster_count < self._n_clusters:
@@ -76,7 +77,7 @@ class MetricRegressor(nn.Module):
         cweights = self.get_c_weights() if cweights is None else cweights
         w = self.get_unormalized_membership(s, cweights)
         # We add 1 to weights norm to consider also the default cluster
-        w_norm = torch.sum(w, dim=-1, keepdim=True) + 1
+        w_norm = torch.sum(w, dim=-1, keepdim=True) + self.w_default
         return w / w_norm
 
     def _cluster_distance(self, s):
@@ -164,3 +165,7 @@ class MetricPolicy(TorchPolicy):
     @property
     def n_clusters(self):
         return self._regressor.n_clusters
+
+    @property
+    def w_default(self):
+        return self._regressor.w_default
