@@ -21,7 +21,7 @@ class Grad1Abs(torch.autograd.Function):
 
 
 class MetricRegressor(nn.Module):
-    def __init__(self, input_shape, output_shape, n_clusters, std_0, temp=1., w_default=1e-3, **kwargs):
+    def __init__(self, input_shape, output_shape, n_clusters, std_0, temp=1., w_default=1., **kwargs):
         super().__init__()
 
         s_dim = input_shape[0]
