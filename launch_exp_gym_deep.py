@@ -6,8 +6,8 @@ if __name__ == '__main__':
     exp = 'big'
     #exp = 'small'
 
-    launcher = Launcher(exp_name='metricrl',
-                        python_file='exp_gym',
+    launcher = Launcher(exp_name='baselines_mushroom',
+                        python_file='exp_gym_deep',
                         n_exp=25,
                         memory=2000,
                         hours=24,
@@ -16,10 +16,11 @@ if __name__ == '__main__':
                         n_jobs=-1,
                         use_timestamp=True)
 
+    algs = ['PPO', 'TRPO']
+
     if exp == 'big':
         envs = ['HopperBulletEnv-v0', 'Walker2DBulletEnv-v0', 'HalfCheetahBulletEnv-v0', 'AntBulletEnv-v0']
         horizons = [1000, 1000, 1000, 1000]
-        temp_per_envs = [1., 1., .33, .33]
         n_epochs = 1000
 
         n_clusterss = [10, 20, 40]
@@ -28,7 +29,6 @@ if __name__ == '__main__':
         envs = ['MountainCarContinuous-v0', 'BipedalWalker-v3', 'Pendulum-v0', 'InvertedPendulumBulletEnv-v0',
                 'InvertedPendulumSwingupBulletEnv-v0', 'InvertedDoublePendulumBulletEnv-v0']
         horizons = [1000, 1600, 200, 1000, 1000, 1000]
-        temp_per_envs = [1., 1., 1., 1., 1., 1., 1.]
         n_epochs = 500
 
         n_clusterss = [5, 10, 20]
@@ -43,11 +43,10 @@ if __name__ == '__main__':
         n_episodes_test=5,
     )
 
-    for env, horizon, temp in zip(envs, horizons, temp_per_envs):
-        launcher.add_default_params(horizon=horizon,
-                                    temp=temp)
-        for n_clusters in n_clusterss:
+    for alg in algs:
+        for env, horizon in zip(envs, horizons):
+            launcher.add_default_params(horizon=horizon)
             launcher.add_experiment(env_id=env,
-                                    n_clusters=n_clusters)
+                                    alg_name=alg)
 
     launcher.run(local, test)

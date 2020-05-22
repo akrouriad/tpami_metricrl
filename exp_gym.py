@@ -93,21 +93,6 @@ def experiment(env_id, horizon, gamma,
     logger.save(network=agent.policy._regressor, seed=seed)
 
 
-def default_params():
-    defaults = dict(
-        gamma=.99,
-        n_epochs=1000,
-        n_steps=3000,
-        n_steps_per_fit=3000,
-        n_episodes_test=5,
-        n_clusters=10,
-        no_delete=True,
-        temp=1.,
-    )
-
-    return defaults
-
-
 def get_parameters(n_clusters, temp):
 
     policy_params = dict(n_clusters=n_clusters,
@@ -144,6 +129,21 @@ def get_parameters(n_clusters, temp):
                   critic_fit_params=critic_fit_params)
 
     return params
+
+
+def default_params():
+    defaults = dict(
+        gamma=.99,
+        n_epochs=1000,
+        n_steps=3000,
+        n_steps_per_fit=3000,
+        n_episodes_test=5,
+        n_clusters=10,
+        no_delete=True,
+        temp=1.,
+    )
+
+    return defaults
 
 
 def parse_args():

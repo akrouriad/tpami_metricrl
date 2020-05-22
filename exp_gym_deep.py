@@ -1,3 +1,6 @@
+import os
+import argparse
+
 import torch
 import numpy as np
 from tqdm import tqdm, trange
@@ -8,21 +11,24 @@ from mushroom_rl.algorithms.actor_critic import PPO, TRPO
 from mushroom_rl.policy import GaussianTorchPolicy
 from mushroom_rl.utils.dataset import compute_J
 
-from metric_rl.logger import generate_log_folder, save_parameters, Logger
+from metric_rl.logger import save_parameters, Logger
 from metric_rl.rl_shared import MLP
 
 import torch.optim as optim
 import torch.nn.functional as F
 
 
-def experiment(alg_name, env_id, horizon, gamma, n_epochs, n_steps, n_steps_per_fit, n_episodes_test,
-               seed, n_models_v=1, log_name=None, visualize=False):
+def experiment(alg_name, env_id, horizon, gamma,
+               n_epochs, n_steps, n_steps_per_fit, n_episodes_test,
+               n_models_v, seed, results_dir):
     print(alg_name)
+    os.makedirs(results_dir, exist_ok=True)
+
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.set_num_threads(1)
 
-    logger = Logger(log_name, 'net')
+    logger = Logger(results_dir, 'net')
 
     mdp = Gym(env_id, horizon, gamma)
 
@@ -53,7 +59,7 @@ def experiment(alg_name, env_id, horizon, gamma, n_epochs, n_steps, n_steps_per_
     agent = alg(mdp.info, policy, critic_params=critic_params, **alg_params)
 
     # Save alg params
-    save_parameters(log_name, dict(alg_params=alg_params))
+    save_parameters(results_dir, dict(alg_params=alg_params))
 
     # Run learning
     core = Core(agent, mdp)
@@ -98,11 +104,6 @@ def experiment(alg_name, env_id, horizon, gamma, n_epochs, n_steps, n_steps_per_
         tqdm.write('J: {}, R: {}, entropy: {}'.format(J, R, E))
         tqdm.write('##################################################################################################')
 
-    if visualize:
-        print('Press a button to visualize')
-        input()
-        core.evaluate(n_episodes=5, render=True)
-
 
 def get_alg_and_parameters(alg_name):
     if alg_name == 'PPO':
@@ -132,22 +133,42 @@ def get_alg_and_parameters(alg_name):
         raise RuntimeError
 
 
+def default_params():
+    defaults = dict(
+        gamma=.99,
+        n_epochs=1000,
+        n_steps=3000,
+        n_steps_per_fit=3000,
+        n_episodes_test=5,
+        n_models_v=1
+    )
+
+    return defaults
+
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('--alg-name', type=str)
+    parser.add_argument("--env-id", type=str)
+    parser.add_argument("--horizon", type=int)
+    parser.add_argument('--gamma', type=float)
+
+    parser.add_argument("--n-models-v", type=int)
+
+    parser.add_argument("--n-epochs", type=int)
+    parser.add_argument("--n-steps", type=int)
+    parser.add_argument("--n-steps-per-fit", type=int)
+    parser.add_argument("--n-episodes-test", type=int)
+
+    parser.add_argument('--seed', type=int)
+    parser.add_argument('--results-dir', type=str)
+
+    parser.set_defaults(**default_params())
+    args = parser.parse_args()
+    return vars(args)
+
+
 if __name__ == '__main__':
-    # Algs
-    algs = ['PPO', 'TRPO']
-
-    # BipedalWalker
-    env_id = 'BipedalWalker-v2'
-    horizon = 1600
-    gamma = .99
-
-    # HopperBullet
-    # env_id = 'HopperBulletEnv-v0'
-    # horizon = 1000
-    # gamma = .99
-
-    for alg_name in algs:
-        log_name = generate_log_folder(env_id, alg_name, timestamp=True)
-        experiment(alg_name=alg_name, env_id=env_id, horizon=horizon, gamma=gamma,
-                   n_epochs=2, n_steps=30000, n_steps_per_fit=3000, n_episodes_test=10,
-                   seed=0, log_name=log_name, visualize=True)
+    args = parse_args()
+    experiment(**args)
