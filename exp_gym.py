@@ -1,3 +1,6 @@
+import os
+import argparse
+
 import torch
 import torch.optim as optim
 import torch.nn.functional as F
@@ -10,22 +13,25 @@ from mushroom_rl.environments import Gym
 from mushroom_rl.utils.dataset import compute_J
 
 from metric_rl.metric_rl import MetricRL
-from metric_rl.logger import generate_log_folder, save_parameters, Logger
+from metric_rl.logger import save_parameters, Logger
 from metric_rl.rl_shared import TwoPhaseEntropProfile, MLP
-from joblib import Parallel, delayed
 
 
-def experiment(env_id, n_clusters, horizon, seed, gamma=.99, n_epochs=1000, n_steps=3000, n_steps_per_fit=3000,
-               n_episodes_test=5, log_name=None, do_delete=True, temp=1.):
+def experiment(env_id, horizon, gamma,
+               n_clusters, no_delete, temp,
+               n_epochs, n_steps, n_steps_per_fit,
+               n_episodes_test, seed, results_dir):
     print('Metric RL')
+    os.makedirs(results_dir, exist_ok=True)
+
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.set_num_threads(1)
 
-    logger = Logger(log_name, 'net')
+    logger = Logger(results_dir, 'net')
 
     params = get_parameters(n_clusters, temp)
-    save_parameters(log_name, params)
+    save_parameters(results_dir, params)
 
     mdp = Gym(env_id, horizon, gamma)
 
@@ -37,7 +43,7 @@ def experiment(env_id, n_clusters, horizon, seed, gamma=.99, n_epochs=1000, n_st
     critic_params = dict(input_shape=input_shape,
                          **params['critic_params'])
     params['critic_params'] = critic_params
-    params['do_delete'] = do_delete
+    params['do_delete'] = not no_delete
 
     agent = MetricRL(mdp.info, **params)
 
@@ -87,6 +93,21 @@ def experiment(env_id, n_clusters, horizon, seed, gamma=.99, n_epochs=1000, n_st
     logger.save(network=agent.policy._regressor, seed=seed)
 
 
+def default_params():
+    defaults = dict(
+        gamma=.99,
+        n_epochs=1000,
+        n_steps=3000,
+        n_steps_per_fit=3000,
+        n_episodes_test=5,
+        n_clusters=10,
+        no_delete=True,
+        temp=1.,
+    )
+
+    return defaults
+
+
 def get_parameters(n_clusters, temp):
 
     policy_params = dict(n_clusters=n_clusters,
@@ -125,35 +146,31 @@ def get_parameters(n_clusters, temp):
     return params
 
 
+def parse_args():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--env-id", type=str)
+    parser.add_argument("--horizon", type=int)
+    parser.add_argument('--gamma', type=float)
+
+    parser.add_argument("--n-clusters", type=int)
+    parser.add_argument("--temp", type=float)
+    parser.add_argument("--no-delete", action='store_false')
+
+    parser.add_argument("--n-epochs", type=int)
+    parser.add_argument("--n-steps", type=int)
+    parser.add_argument("--n-steps-per-fit", type=int)
+    parser.add_argument("--n-episodes-test", type=int)
+
+    parser.add_argument('--seed', type=int)
+    parser.add_argument('--results-dir', type=str)
+
+    parser.set_defaults(**default_params())
+    args = parser.parse_args()
+    return vars(args)
+
+
 if __name__ == '__main__':
-    n_experiments = 1
-    n_jobs = n_experiments
+    args = parse_args()
+    experiment(**args)
 
-    # n_clusters = 40
-    # n_clusters = 20
-    n_clusters = 10
-
-    gamma = .99
-
-    # Pybullet
-    env_id = 'AntBulletEnv-v0'
-    # env_id = 'HalfCheetahBulletEnv-v0'
-    temp = .33
-    horizon = 1000
-
-    # Bipedal Walker
-    # env_id = 'BipedalWalker-v2'
-    # horizon = 1600
-    # temp = 1.
-
-    do_delete = True
-
-    log_name = generate_log_folder(env_id, 'metric', str(n_clusters), True)
-    print('log name', log_name)
-    Parallel(n_jobs=n_jobs)(delayed(experiment)(env_id=env_id,
-                                                n_clusters=n_clusters,
-                                                horizon=horizon, gamma=gamma,
-                                                n_epochs=1000, n_steps=3000, n_steps_per_fit=3000,
-                                                n_episodes_test=5, seed=seed, log_name=log_name,
-                                                do_delete=do_delete, temp=temp)
-                            for seed in range(n_experiments))
