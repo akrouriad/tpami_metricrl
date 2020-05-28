@@ -23,15 +23,11 @@ if __name__ == '__main__':
         horizons = [1000, 1000, 1000, 1000]
         n_epochs = 1000
 
-        n_clusterss = [10, 20, 40]
-
     elif exp == 'small':
         envs = ['MountainCarContinuous-v0', 'BipedalWalker-v3', 'Pendulum-v0', 'InvertedPendulumBulletEnv-v0',
                 'InvertedPendulumSwingupBulletEnv-v0', 'InvertedDoublePendulumBulletEnv-v0']
         horizons = [1000, 1600, 200, 1000, 1000, 1000]
         n_epochs = 500
-
-        n_clusterss = [5, 10, 20]
 
     else:
         raise RuntimeError
