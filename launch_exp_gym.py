@@ -50,4 +50,4 @@ if __name__ == '__main__':
             launcher.add_experiment(env_id=env,
                                     n_clusters=n_clusters)
 
-    launcher.run(local, test)
+        launcher.run(local, test)

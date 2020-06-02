@@ -3,7 +3,7 @@ import argparse
 
 import torch
 import numpy as np
-from tqdm import tqdm, trange
+from tqdm import tqdm
 
 from mushroom_rl.core import Core
 from mushroom_rl.environments import Gym

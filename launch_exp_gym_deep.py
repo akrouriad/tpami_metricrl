@@ -39,10 +39,10 @@ if __name__ == '__main__':
         n_episodes_test=5,
     )
 
-    for alg in algs:
-        for env, horizon in zip(envs, horizons):
-            launcher.add_default_params(horizon=horizon)
+    for env, horizon in zip(envs, horizons):
+        launcher.add_default_params(horizon=horizon)
+        for alg in algs:
             launcher.add_experiment(env_id=env,
                                     alg_name=alg)
 
-    launcher.run(local, test)
+        launcher.run(local, test)
