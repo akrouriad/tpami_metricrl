@@ -46,6 +46,7 @@ def experiment(alg_name, env_id, horizon, gamma,
                          output_shape=(1,),
                          optimizer={'class': optim.Adam,
                                     'params': {'lr': 3e-4}},
+                         batch_size=64,
                          n_models=n_models_v,
                          size_list=[64, 64])
 
