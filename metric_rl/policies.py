@@ -21,29 +21,38 @@ class Grad1Abs(torch.autograd.Function):
 
 
 class MetricRegressor(nn.Module):
-    def __init__(self, input_shape, output_shape, n_clusters, std_0, temp=1., w_default=1., **kwargs):
+    def __init__(self, input_shape, output_shape, n_clusters, std_0, temp=1., w_default=1., learnable_centers=False, **kwargs):
         super().__init__()
 
         s_dim = input_shape[0]
         a_dim = output_shape[0]
-        self.centers = torch.zeros(n_clusters, s_dim)
+        if learnable_centers:
+            self.centers = nn.Parameter(torch.zeros(n_clusters, s_dim))
+            self._c_weights = nn.Parameter(torch.ones(n_clusters))
+        else:
+            self.centers = torch.zeros(n_clusters, s_dim)
+            self._c_weights = nn.Parameter(torch.zeros(n_clusters))
         self.means = nn.Parameter(torch.zeros(n_clusters, a_dim))
-        self._c_weights = nn.Parameter(torch.zeros(n_clusters))
         self._log_sigma = nn.Parameter(torch.ones(a_dim) * np.log(std_0))
 
         # self._log_temp = nn.Parameter(torch.log(torch.tensor(temp)) * torch.ones_like(self._c_weights))
         self._log_temp = nn.Parameter(torch.log(torch.tensor(temp)))
 
-        self._cluster_count = 0
         self._n_clusters = n_clusters
+        self._cluster_count = 0
         self.w_default = w_default
 
     def forward(self, s):
         if self._cluster_count < self._n_clusters:
-            self.centers[self._cluster_count] = s
-            if self._cluster_count == 0:
-                self._c_weights.data[0] = 1
-            self._cluster_count += 1
+            if self.centers.requires_grad:
+                for k in range(self._n_clusters):
+                    self.centers.data[k] = s + torch.randn_like(s) * 1e-2
+                self._cluster_count = self._n_clusters
+            else:
+                self.centers[self._cluster_count] = s
+                if self._cluster_count == 0:
+                    self._c_weights.data[0] = 1
+                self._cluster_count += 1
 
         return self.get_mean(s), self.get_chol()
 
@@ -93,9 +102,9 @@ class MetricRegressor(nn.Module):
 
 
 class MetricPolicy(TorchPolicy):
-    def __init__(self, input_shape, output_shape, n_clusters, std_0, temp=1., use_cuda=False):
+    def __init__(self, input_shape, output_shape, n_clusters, std_0, temp=1., use_cuda=False, learnable_centers=False):
         self._a_dim = output_shape[0]
-        self._regressor = MetricRegressor(input_shape, output_shape, n_clusters, std_0, temp=temp)
+        self._regressor = MetricRegressor(input_shape, output_shape, n_clusters, std_0, temp=temp, learnable_centers=learnable_centers)
 
         super().__init__(use_cuda)
 
@@ -117,10 +126,25 @@ class MetricPolicy(TorchPolicy):
         return torch.distributions.MultivariateNormal(mu, scale_tril=chol_sigma)
 
     def get_weights(self):
-        raise NotImplementedError
+        weights = list()
+        for p in self.parameters():
+            w = p.data.detach().cpu().numpy()
+            weights.append(w.flatten())
+        weights = np.concatenate(weights, 0)
+        return weights
 
     def set_weights(self, weights):
-        raise NotImplementedError
+        idx = 0
+        for p in self.parameters():
+            shape = p.data.shape
+            c = 1
+            for s in shape:
+                c *= s
+            w = np.reshape(weights[idx:idx + c], shape)
+            w_tensor = torch.tensor(w).type(p.data.dtype)
+            p.data = w_tensor
+            idx += c
+        assert idx == weights.size
 
     def parameters(self):
         return self._regressor.parameters()

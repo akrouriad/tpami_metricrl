@@ -1,13 +1,14 @@
 from experiment_launcher import Launcher
 
 if __name__ == '__main__':
-    local = True
+    local = False
     test = False
     exp = 'big'
     #exp = 'small'
 
     launcher = Launcher(exp_name='baselines_mushroom',
-                        python_file='exp_gym_deep',
+                        # python_file='exp_gym_deep',
+                        python_file='exp_gym_diffmetric',
                         n_exp=25,
                         memory=2000,
                         hours=24,
@@ -17,6 +18,7 @@ if __name__ == '__main__':
                         use_timestamp=True)
 
     algs = ['PPO', 'TRPO']
+    nb_centers_list = [10, 20, 40]
 
     if exp == 'big':
         envs = ['HopperBulletEnv-v0', 'Walker2DBulletEnv-v0', 'HalfCheetahBulletEnv-v0', 'AntBulletEnv-v0']
@@ -42,7 +44,8 @@ if __name__ == '__main__':
     for env, horizon in zip(envs, horizons):
         launcher.add_default_params(horizon=horizon)
         for alg in algs:
-            launcher.add_experiment(env_id=env,
-                                    alg_name=alg)
+            for nb_centers in nb_centers_list:
+                launcher.add_experiment(env_id=env,
+                                        alg_name=alg, nb_centers=nb_centers)
 
         launcher.run(local, test)
