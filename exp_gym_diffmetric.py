@@ -23,6 +23,7 @@ def experiment(alg_name, env_id, horizon, gamma,
                n_epochs, n_steps, n_steps_per_fit, n_episodes_test,
                n_models_v, seed, results_dir, nb_centers):
     print(alg_name)
+    print(results_dir)
     os.makedirs(results_dir, exist_ok=True)
 
     np.random.seed(seed)
