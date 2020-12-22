@@ -109,6 +109,7 @@ def experiment(alg_name, env_id, horizon, gamma,
         tqdm.write('J: {}, R: {}, entropy: {}'.format(J, R, E))
         tqdm.write('##################################################################################################')
 
+    logger.save(network=agent.policy._regressor, seed=seed)
 
 def get_alg_and_parameters(alg_name):
     if alg_name == 'PPO':
