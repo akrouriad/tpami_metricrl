@@ -54,7 +54,7 @@ def create_figure(res_folder, subfolder, name, env, all_data, alg_labels, use_me
     plt.clf()
 
 
-def load_data_base(res_folder, env, subfolder, nb_runs, nb_epochs, entropy=True):
+def load_data_base(res_folder, env, subfolder, nb_runs, nb_epochs, entropy=True, add_prop_id=False):
     all_r_a = []
     all_j_a = []
     all_entropy_a = []
@@ -65,9 +65,12 @@ def load_data_base(res_folder, env, subfolder, nb_runs, nb_epochs, entropy=True)
         e_filename = 'E-' + str(run) + '.npy'
 
         print(res_folder, env, subfolder, j_filename)
-        j_name = os.path.join(res_folder, env, subfolder, j_filename)
-        r_name = os.path.join(res_folder, env, subfolder, r_filename)
-        e_name = os.path.join(res_folder, env, subfolder, e_filename)
+        prop_id = ''
+        if add_prop_id:
+            prop_id = 'env_id_'
+        j_name = os.path.join(res_folder, prop_id+env, subfolder, j_filename)
+        r_name = os.path.join(res_folder, prop_id+env, subfolder, r_filename)
+        e_name = os.path.join(res_folder, prop_id+env, subfolder, e_filename)
 
         try:
             J = np.load(j_name)
@@ -92,14 +95,17 @@ def load_data_base(res_folder, env, subfolder, nb_runs, nb_epochs, entropy=True)
         return all_j_a, all_r_a
 
 
-def load_data_baselines(res_folder, env, alg_names, nb_runs, nb_epochs, entropy=False):
+def load_data_baselines(res_folder, env, alg_names, nb_runs, nb_epochs, entropy=False, add_prop_id=False):
     all_j = []
     all_r = []
 
     for alg_name in alg_names:
-        subfolder = alg_name
+        if add_prop_id:
+            subfolder = 'alg_name_'+alg_name
+        else:
+            subfolder = alg_name
 
-        all_j_a, all_r_a = load_data_base(res_folder, env, subfolder, nb_runs, nb_epochs, entropy=entropy)
+        all_j_a, all_r_a = load_data_base(res_folder, env, subfolder, nb_runs, nb_epochs, entropy=entropy, add_prop_id=add_prop_id)
 
         all_j.append(all_j_a)
         all_r.append(all_r_a)
@@ -107,7 +113,7 @@ def load_data_baselines(res_folder, env, alg_names, nb_runs, nb_epochs, entropy=
     return all_j, all_r
 
 
-def load_data_fixedtemp(res_folder, env, alg_name, n_clusterss, nb_runs, nb_epochs, clus_sels, clus_dels, temps):
+def load_data_fixedtemp(res_folder, env, alg_name, n_clusterss, nb_runs, nb_epochs, clus_sels, clus_dels, temps, add_prop_id=False):
     all_j = []
     all_r = []
     all_entropy = []
@@ -120,7 +126,7 @@ def load_data_fixedtemp(res_folder, env, alg_name, n_clusterss, nb_runs, nb_epoc
                     alg_label = 'c' + str(n_clusters) + 'h' + clus_sel + 'd' + str(clus_del) + 't' + str(temp) + 'snone'
                     subfolder = alg_name + '_' + alg_label
                     print(subfolder)
-                    all_j_a, all_r_a, all_entropy_a = load_data_base(res_folder, env, subfolder, nb_runs, nb_epochs)
+                    all_j_a, all_r_a, all_entropy_a = load_data_base(res_folder, env, subfolder, nb_runs, nb_epochs, add_prop_id=add_prop_id)
 
                     all_j.append(all_j_a)
                     all_r.append(all_r_a)
@@ -133,41 +139,55 @@ def load_data_fixedtemp(res_folder, env, alg_name, n_clusterss, nb_runs, nb_epoc
 if __name__ == '__main__':
 
     plot_baselines = True
+    plot_diffproto = True
 
-    xp_name = 'final_small2'
-    envs = ['BipedalWalker-v2', 'Pendulum-v0', 'InvertedPendulumSwingupBulletEnv-v0', 'InvertedPendulumBulletEnv-v0']
-    temps = [1., 1., 1., 1.]
-    n_clusterss = [5, 10, 20]
-    nb_epochs = 500
-    alg_labels = ['Metric-5', 'Metric-10', 'Metric-20', 'PPO', 'TRPO (MLP)', 'TRPO (Linear)']
+    # xp_name = 'final_small2'
+    # envs = ['BipedalWalker-v2', 'Pendulum-v0', 'InvertedPendulumSwingupBulletEnv-v0', 'InvertedPendulumBulletEnv-v0']
+    # temps = [1., 1., 1., 1.]
+    # n_clusterss = [5, 10, 20]
+    # nb_epochs = 500
+    # alg_labels = ['Metric-5', 'Metric-10', 'Metric-20', 'PPO', 'TRPO (MLP)', 'TRPO (Linear)']
 
-    # xp_name = 'final_medium'
-    # envs = ['HopperBulletEnv-v0', 'Walker2DBulletEnv-v0', 'HalfCheetahBulletEnv-v0', 'AntBulletEnv-v0']
-    # temps = [1., 1., .33, .33]
+    xp_name = 'final_medium'
+    # xp_name = 'med_diff'
+    envs = ['HopperBulletEnv-v0', 'Walker2DBulletEnv-v0', 'HalfCheetahBulletEnv-v0', 'AntBulletEnv-v0']
+    temps = [1., 1., .33, .33]
     # n_clusterss = [10, 20, 40]
-    # nb_epochs = 1000
+    n_clusterss = [10]
+    nb_epochs = 1000
     # alg_labels = ['Metric-10', 'Metric-20', 'Metric-40', 'PPO', 'TRPO (MLP)', 'TRPO (Linear)']
+    alg_labels = ['Metric-10', 'PPO-DiffMetric10', 'TRPO-DiffMetric10', 'PPO', 'TRPO (MLP)']
 
     res_folder = './Results/'
     exp_folder = os.path.join(res_folder, xp_name)
     baseline_folder = os.path.join(res_folder, 'baselines')
+    diffproto_folder = os.path.join(res_folder, 'diffproto')
 
     nb_runs = 25
     clus_sels = ['covr_exp']
     clus_dels = [True]
     alg_name = 'metricrl'
-    baselines_algs = ['ppo2', 'trpo_mpi', 'trpo_linear']
+    # baselines_algs = ['ppo2', 'trpo_mpi', 'trpo_linear']
+    baselines_algs = ['ppo2', 'trpo_mpi']
     baselines_mushroom_algs = ['PPO', 'TRPO']
+    diffproto_algs = ['PPO', 'TRPO']
+    diffproto_algs = [dpalg + '/nb_centers_' + str(n_clusterss[0]) for dpalg in diffproto_algs]
 
     count = 0
     for temp, env in zip(temps, envs):
-        all_j, all_r, all_e, _ = load_data_fixedtemp(exp_folder, env, alg_name, n_clusterss, nb_runs, nb_epochs, clus_sels, clus_dels, [temp])
+        all_j, all_r, all_e, _ = load_data_fixedtemp(exp_folder, env, alg_name, n_clusterss, nb_runs, nb_epochs, clus_sels, clus_dels, [temp], add_prop_id=False)
 
-        if plot_baselines:
-            b_j, b_r = load_data_baselines(baseline_folder, env, baselines_algs, nb_runs, nb_epochs)
+        if plot_diffproto:
+            b_j, b_r = load_data_baselines(diffproto_folder, env, diffproto_algs, nb_runs, nb_epochs, add_prop_id=True)
             all_j += b_j
             all_r += b_r
 
+        if plot_baselines:
+            b_j, b_r = load_data_baselines(baseline_folder, env, baselines_algs, nb_runs, nb_epochs, add_prop_id=False)
+            all_j += b_j
+            all_r += b_r
+
+        print('creating figure in folder {}, subfolder plots/{}, for env {}'.format(res_folder, xp_name, env))
         create_figure(res_folder, xp_name, 'R', env, all_r, alg_labels,
                       legend=(count + 1 == len(envs)))
         count += 1
