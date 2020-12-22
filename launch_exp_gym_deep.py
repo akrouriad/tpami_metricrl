@@ -1,7 +1,7 @@
 from experiment_launcher import Launcher
 
 if __name__ == '__main__':
-    local = False
+    local = True
     test = False
     exp = 'bigdiff'
     #exp = 'smalldiff'
@@ -9,7 +9,8 @@ if __name__ == '__main__':
     launcher = Launcher(exp_name='baselines_diff_mushroom',
                         # python_file='exp_gym_deep',
                         python_file='exp_gym_diffmetric',
-                        n_exp=25,
+                        # n_exp=25,
+                        n_exp=8,
                         memory=2000,
                         hours=24,
                         minutes=0,
@@ -17,12 +18,15 @@ if __name__ == '__main__':
                         n_jobs=-1,
                         use_timestamp=True)
 
-    algs = ['PPO', 'TRPO']
+    # algs = ['PPO', 'TRPO']
+    algs = ['PPO']
     nb_centers_list = [10]
 
     if exp == 'bigdiff':
-        envs = ['HopperBulletEnv-v0', 'Walker2DBulletEnv-v0', 'HalfCheetahBulletEnv-v0', 'AntBulletEnv-v0']
-        horizons = [1000, 1000, 1000, 1000]
+        # envs = ['HopperBulletEnv-v0', 'Walker2DBulletEnv-v0', 'HalfCheetahBulletEnv-v0', 'AntBulletEnv-v0']
+        envs = ['HopperBulletEnv-v0', 'HalfCheetahBulletEnv-v0', 'AntBulletEnv-v0']
+        # horizons = [1000, 1000, 1000, 1000]
+        horizons = [1000, 1000, 1000]
         n_epochs = 1000
 
     elif exp == 'smalldiff':
