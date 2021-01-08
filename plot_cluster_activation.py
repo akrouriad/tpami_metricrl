@@ -199,14 +199,24 @@ if __name__ == '__main__':
     # seed = 0
     # ratios = [3.5, 1]
 
+    # env_id = 'HopperBulletEnv-v0'
+    # log_name = 'Results/final_medium/HopperBulletEnv-v0/metricrl_c10hcovr_expdTruet1.0snone'
+    # n_clusters = 10
+    # # idxs = [k for k in range(n_clusters)]
+    # idxs = [0, 9, 4]
+    # plot_default = True
+    # seed = 12
+    # ratios = [3.5, 1]
+
     env_id = 'HopperBulletEnv-v0'
-    log_name = 'Results/final_medium/HopperBulletEnv-v0/metricrl_c10hcovr_expdTruet1.0snone'
+    log_name = 'Results/diffproto_temp/env_id_HopperBulletEnv-v0/alg_name_PPO/nb_centers_10'
     n_clusters = 10
-    # idxs = [k for k in range(n_clusters)]
-    idxs = [0, 9, 4]
+    idxs = [k for k in range(n_clusters)]
+    # idxs = [0, 9, 4]
     plot_default = True
-    seed = 12
+    seed = 24
     ratios = [3.5, 1]
+
 
     # env_id = 'HalfCheetahBulletEnv-v0'
     # log_name = 'Results/final_medium/HalfCheetahBulletEnv-v0/metricrl_c10hcovr_expdTruet0.33snone'

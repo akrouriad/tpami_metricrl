@@ -99,10 +99,15 @@ if __name__ == '__main__':
     # run_id = 12
     # cluster_idxs = [0, 9, 4]
 
-    env_id = 'HalfCheetahBulletEnv-v0'
-    postfix = 'c10hcovr_expdTruet0.33snone'
-    run_id = 2
-    cluster_idxs = [4, 2, 9, 0]
+    env_id = 'HopperBulletEnv-v0'
+    postfix = 'c10hcovr_expdTruet1.0snone'
+    run_id = 12
+    cluster_idxs = [0, 9, 4]
+
+    # env_id = 'HalfCheetahBulletEnv-v0'
+    # postfix = 'c10hcovr_expdTruet0.33snone'
+    # run_id = 2
+    # cluster_idxs = [4, 2, 9, 0]
 
     log_name = os.path.join('Results', exp_id, env_id, alg_name + '_' + postfix)
     print(log_name)

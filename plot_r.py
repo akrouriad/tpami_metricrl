@@ -161,7 +161,8 @@ if __name__ == '__main__':
     res_folder = './Results/'
     exp_folder = os.path.join(res_folder, xp_name)
     baseline_folder = os.path.join(res_folder, 'baselines')
-    diffproto_folder = os.path.join(res_folder, 'diffproto')
+    # diffproto_folder = os.path.join(res_folder, 'diffproto')
+    diffproto_folder = os.path.join(res_folder, 'diffproto_temp')
 
     nb_runs = 25
     clus_sels = ['covr_exp']

@@ -109,22 +109,23 @@ if __name__ == '__main__':
     # seed = 0
     # iteration = 1001
 
-    # env_id = 'HopperBulletEnv-v0'
+    env_id = 'HopperBulletEnv-v0'
     # log_name = 'Results/final_medium/HopperBulletEnv-v0/metricrl_c10hcovr_expdTruet1.0snone'
-    # seed = 12
-    # iteration = 1001
+    log_name = 'Results/diffproto_temp/env_id_HopperBulletEnv-v0/alg_name_PPO/nb_centers_10'
+    seed = 7
+    iteration = 1001
 
     # env_id = 'HalfCheetahBulletEnv-v0'
     # log_name = 'Results/final_medium/HalfCheetahBulletEnv-v0/metricrl_c10hcovr_expdTruet0.33snone'
     # seed = 2
     # iteration = 1001
 
-    env_id = 'Pendulum-v0'
-    # log_name = 'Results/final_small2/Pendulum-v0/metricrl_c5hcovr_expdTruet1.0snone'
-    # seed = 15
-    log_name = 'Results/final_small2/Pendulum-v0/metricrl_c10hcovr_expdTruet1.0snone'
-    seed = 3
-    iteration = 501
+    # env_id = 'Pendulum-v0'
+    # # log_name = 'Results/final_small2/Pendulum-v0/metricrl_c5hcovr_expdTruet1.0snone'
+    # # seed = 15
+    # log_name = 'Results/final_small2/Pendulum-v0/metricrl_c10hcovr_expdTruet1.0snone'
+    # seed = 3
+    # iteration = 501
 
     policy = load_policy(log_name, iteration=iteration, seed=seed)
 
