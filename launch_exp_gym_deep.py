@@ -1,7 +1,7 @@
 from experiment_launcher import Launcher
 
 if __name__ == '__main__':
-    local = True
+    local = False
     test = False
     exp = 'bigdiff'
     #exp = 'smalldiff'
@@ -15,13 +15,13 @@ if __name__ == '__main__':
                         hours=24,
                         minutes=0,
                         seconds=0,
-                        # n_jobs=-1,
-                        n_jobs=25,
+                        n_jobs=-1,
+                        # n_jobs=25,
                         use_timestamp=True)
 
-    # algs = ['PPO', 'TRPO']
-    algs = ['PPO']
-    nb_centers_list = [10]
+    algs = ['PPO', 'TRPO']
+    # algs = ['PPO']
+    nb_centers_list = [10, 20, 40]
 
     if exp == 'bigdiff':
         envs = ['HopperBulletEnv-v0', 'Walker2DBulletEnv-v0', 'HalfCheetahBulletEnv-v0', 'AntBulletEnv-v0']
