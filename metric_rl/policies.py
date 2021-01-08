@@ -4,7 +4,7 @@ import numpy as np
 
 from mushroom_rl.policy import TorchPolicy
 from mushroom_rl.utils.torch import to_float_tensor
-
+from metric_rl.projections.gaussian import project_entrop
 
 class Grad1Abs(torch.autograd.Function):
     @staticmethod
@@ -41,6 +41,7 @@ class MetricRegressor(nn.Module):
         self._n_clusters = n_clusters
         self._cluster_count = 0
         self.w_default = w_default
+        self.e_lb = None
 
     def forward(self, s):
         if self._cluster_count < self._n_clusters:
@@ -66,7 +67,10 @@ class MetricRegressor(nn.Module):
         return self.means
 
     def get_chol(self):
-        return torch.diag(torch.exp(self._log_sigma))
+        if self.e_lb is None:
+            return torch.diag(torch.exp(self._log_sigma))
+        else:
+            return project_entrop(torch.diag(torch.exp(self._log_sigma)), self.e_lb)
 
     def set_chol(self, chol):
         log_sigma = torch.log(torch.diag(chol))
@@ -118,7 +122,7 @@ class MetricPolicy(TorchPolicy):
         return self.distribution_t(state).log_prob(action)[:, None]
 
     def entropy_t(self, state):
-        log_sigma = self._regressor._log_sigma
+        log_sigma = torch.log(torch.diag(self._regressor.get_chol()))
         return self._a_dim / 2 * np.log(2 * np.pi * np.e) + torch.sum(log_sigma)
 
     def distribution_t(self, state):

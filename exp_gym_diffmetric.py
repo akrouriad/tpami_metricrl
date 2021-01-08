@@ -12,7 +12,7 @@ from mushroom_rl.policy import GaussianTorchPolicy
 from mushroom_rl.utils.dataset import compute_J
 
 from metric_rl.logger import save_parameters, Logger
-from metric_rl.rl_shared import MLP
+from metric_rl.rl_shared import MLP, TwoPhaseEntropProfile
 
 import torch.optim as optim
 import torch.nn.functional as F
@@ -62,6 +62,7 @@ def experiment(alg_name, env_id, horizon, gamma,
     #                              **policy_params)
 
     policy = MetricPolicy(mdp.info.observation_space.shape, mdp.info.action_space.shape, nb_centers, std_0=1., learnable_centers=True)
+    entropy_profile = TwoPhaseEntropProfile(policy, e_reduc=0.0075, e_thresh_mult=.5)
 
     agent = alg(mdp.info, policy, critic_params=critic_params, **alg_params)
 
@@ -110,6 +111,11 @@ def experiment(alg_name, env_id, horizon, gamma,
         tqdm.write('END OF EPOCH ' + str(it + 1))
         tqdm.write('J: {}, R: {}, entropy: {}'.format(J, R, E))
         tqdm.write('##################################################################################################')
+
+        # update entropy lb
+        policy.set_chol_t(policy.get_chol_t())
+        policy._regressor.e_lb = entropy_profile.get_e_lb()
+
 
     logger.save(network=agent.policy._regressor, seed=seed)
 
