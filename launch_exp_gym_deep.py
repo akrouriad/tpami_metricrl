@@ -10,12 +10,13 @@ if __name__ == '__main__':
                         # python_file='exp_gym_deep',
                         python_file='exp_gym_diffmetric',
                         # n_exp=25,
-                        n_exp=8,
+                        n_exp=25,
                         memory=2000,
                         hours=24,
                         minutes=0,
                         seconds=0,
-                        n_jobs=-1,
+                        # n_jobs=-1,
+                        n_jobs=25,
                         use_timestamp=True)
 
     # algs = ['PPO', 'TRPO']
@@ -23,10 +24,8 @@ if __name__ == '__main__':
     nb_centers_list = [10]
 
     if exp == 'bigdiff':
-        # envs = ['HopperBulletEnv-v0', 'Walker2DBulletEnv-v0', 'HalfCheetahBulletEnv-v0', 'AntBulletEnv-v0']
-        envs = ['HopperBulletEnv-v0', 'HalfCheetahBulletEnv-v0', 'AntBulletEnv-v0']
-        # horizons = [1000, 1000, 1000, 1000]
-        horizons = [1000, 1000, 1000]
+        envs = ['HopperBulletEnv-v0', 'Walker2DBulletEnv-v0', 'HalfCheetahBulletEnv-v0', 'AntBulletEnv-v0']
+        horizons = [1000, 1000, 1000, 1000]
         n_epochs = 1000
 
     elif exp == 'smalldiff':

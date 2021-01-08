@@ -24,13 +24,15 @@ def experiment(alg_name, env_id, horizon, gamma,
                n_models_v, seed, results_dir, nb_centers):
     print(alg_name)
     print(results_dir)
+    sub_dir_net = 'net'
     os.makedirs(results_dir, exist_ok=True)
+    os.makedirs(os.path.join(results_dir, sub_dir_net), exist_ok=True)
 
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.set_num_threads(1)
 
-    logger = Logger(results_dir, 'net')
+    logger = Logger(results_dir, sub_dir_net)
 
     mdp = Gym(env_id, horizon, gamma)
 
