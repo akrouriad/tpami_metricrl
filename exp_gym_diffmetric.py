@@ -21,9 +21,10 @@ from metric_rl.policies import MetricPolicy
 
 def experiment(alg_name, env_id, horizon, gamma,
                n_epochs, n_steps, n_steps_per_fit, n_episodes_test,
-               n_models_v, seed, results_dir, nb_centers):
+               n_models_v, seed, results_dir, nb_centers, init_cluster_noise):
     print(alg_name)
     print(results_dir)
+    print(init_cluster_noise)
     sub_dir_net = 'net'
     os.makedirs(results_dir, exist_ok=True)
     os.makedirs(os.path.join(results_dir, sub_dir_net), exist_ok=True)
@@ -61,7 +62,7 @@ def experiment(alg_name, env_id, horizon, gamma,
     #                              mdp.info.action_space.shape,
     #                              **policy_params)
 
-    policy = MetricPolicy(mdp.info.observation_space.shape, mdp.info.action_space.shape, nb_centers, std_0=1., learnable_centers=True)
+    policy = MetricPolicy(mdp.info.observation_space.shape, mdp.info.action_space.shape, nb_centers, std_0=1., learnable_centers=True, init_cluster_noise=init_cluster_noise)
     entropy_profile = TwoPhaseEntropProfile(policy, e_reduc=0.0075, e_thresh_mult=.5)
 
     agent = alg(mdp.info, policy, critic_params=critic_params, **alg_params)
@@ -155,7 +156,8 @@ def default_params():
         n_steps_per_fit=3000,
         n_episodes_test=5,
         n_models_v=1,
-        nb_centers=10
+        nb_centers=10,
+        init_cluster_noise=1e-2,
     )
 
     return defaults
@@ -179,6 +181,7 @@ def parse_args():
     parser.add_argument('--seed', type=int)
     parser.add_argument('--results-dir', type=str)
     parser.add_argument('--nb-centers', type=int)
+    parser.add_argument('--init-cluster-noise', type=float)
 
     parser.set_defaults(**default_params())
     args = parser.parse_args()

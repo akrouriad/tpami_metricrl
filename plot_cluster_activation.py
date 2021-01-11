@@ -208,25 +208,36 @@ if __name__ == '__main__':
     # seed = 12
     # ratios = [3.5, 1]
 
-    env_id = 'HopperBulletEnv-v0'
-    log_name = 'Results/diffproto_temp/env_id_HopperBulletEnv-v0/alg_name_PPO/nb_centers_10'
-    n_clusters = 10
-    idxs = [k for k in range(n_clusters)]
-    # idxs = [0, 9, 4]
-    plot_default = True
-    seed = 24
-    ratios = [3.5, 1]
+    # env_id = 'HopperBulletEnv-v0'
+    # log_name = 'Results/diffentrop/env_id_HopperBulletEnv-v0/alg_name_TRPO/nb_centers_10'
+    # n_clusters = 10
+    # # idxs = [k for k in range(n_clusters)]
+    # idxs = [2, 5, 7, 9]
+    # plot_default = False
+    # seed = 23
+    # ratios = [3.5, 1]
 
 
     # env_id = 'HalfCheetahBulletEnv-v0'
     # log_name = 'Results/final_medium/HalfCheetahBulletEnv-v0/metricrl_c10hcovr_expdTruet0.33snone'
-    # idxs = [4, 2, 9, 0]
-    # # idxs = [k for k in range(10)]
+    # # idxs = [4, 2, 9, 0]
+    # idxs = [k for k in range(10)]
     # # idxs = [0, 3, 4]
-    # plot_default = False
+    # plot_default = True
     # seed = 2
     # ratios = [2, 1]
     # n_clusters = 10
+
+
+    env_id = 'HalfCheetahBulletEnv-v0'
+    log_name = 'Results/diffentrop/env_id_HalfCheetahBulletEnv-v0/alg_name_PPO/nb_centers_10'
+    # idxs = [4, 2, 9, 0]
+    idxs = [k for k in range(10)]
+    # idxs = [0, 3, 4]
+    plot_default = True
+    seed = 5
+    ratios = [3.5, 1]
+    n_clusters = 10
 
     max_time_all = 350
     max_time_selected = 350

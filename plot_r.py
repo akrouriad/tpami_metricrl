@@ -151,18 +151,22 @@ if __name__ == '__main__':
     xp_name = 'final_medium'
     # xp_name = 'med_diff'
     envs = ['HopperBulletEnv-v0', 'Walker2DBulletEnv-v0', 'HalfCheetahBulletEnv-v0', 'AntBulletEnv-v0']
+    # envs = ['AntBulletEnv-v0']
+    # envs = ['HalfCheetahBulletEnv-v0']
     temps = [1., 1., .33, .33]
     # n_clusterss = [10, 20, 40]
-    n_clusterss = [10]
+    n_clusterss = [40]
     nb_epochs = 1000
     # alg_labels = ['Metric-10', 'Metric-20', 'Metric-40', 'PPO', 'TRPO (MLP)', 'TRPO (Linear)']
     alg_labels = ['Metric-10', 'PPO-DiffMetric10', 'TRPO-DiffMetric10', 'PPO', 'TRPO (MLP)']
+    # alg_labels = ['Metric-10', 'PPO-DiffMetric10', 'PPO', 'TRPO (MLP)']
 
     res_folder = './Results/'
     exp_folder = os.path.join(res_folder, xp_name)
     baseline_folder = os.path.join(res_folder, 'baselines')
     # diffproto_folder = os.path.join(res_folder, 'diffproto')
-    diffproto_folder = os.path.join(res_folder, 'diffproto_temp')
+    # diffproto_folder = os.path.join(res_folder, 'diffproto_temp')
+    diffproto_folder = os.path.join(res_folder, 'diffentrop')
 
     nb_runs = 25
     clus_sels = ['covr_exp']
@@ -172,6 +176,7 @@ if __name__ == '__main__':
     baselines_algs = ['ppo2', 'trpo_mpi']
     baselines_mushroom_algs = ['PPO', 'TRPO']
     diffproto_algs = ['PPO', 'TRPO']
+    # diffproto_algs = ['PPO']
     diffproto_algs = [dpalg + '/nb_centers_' + str(n_clusterss[0]) for dpalg in diffproto_algs]
 
     count = 0

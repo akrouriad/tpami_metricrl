@@ -99,24 +99,33 @@ if __name__ == '__main__':
     # run_id = 12
     # cluster_idxs = [0, 9, 4]
 
-    env_id = 'HopperBulletEnv-v0'
-    postfix = 'c10hcovr_expdTruet1.0snone'
-    run_id = 12
-    cluster_idxs = [0, 9, 4]
+    # env_id = 'HopperBulletEnv-v0'
+    # # postfix = 'c10hcovr_expdTruet1.0snone'
+    # run_id = 23
+    # nb_clusters = 10
+    # cluster_idxs = [k for k in range(nb_clusters)]
+    # alg = 'TRPO'
 
     # env_id = 'HalfCheetahBulletEnv-v0'
     # postfix = 'c10hcovr_expdTruet0.33snone'
     # run_id = 2
     # cluster_idxs = [4, 2, 9, 0]
 
-    log_name = os.path.join('Results', exp_id, env_id, alg_name + '_' + postfix)
-    print(log_name)
+    env_id = 'HalfCheetahBulletEnv-v0'
+    run_id = 5
+    nb_clusters = 10
+    cluster_idxs = [k for k in range(nb_clusters)]
+    alg = 'PPO'
+    # log_name = os.path.join('Results', exp_id, env_id, alg_name + '_' + postfix)
+    # print(log_name)
 
     save = True
     save_dir = os.path.join('Results', 'img', env_id)
     save_dir_gifs = os.path.join(save_dir, 'gifs')
 
-    policy_path = os.path.join(log_name, 'net/network-' + str(run_id) + '-' + str(iteration) + '.pth')
+    # policy_path = os.path.join(log_name, 'net/network-' + str(run_id) + '-' + str(iteration) + '.pth')
+    policy_path = 'Results/diffentrop/env_id_' + env_id + '/alg_name_' + alg + '/nb_centers_' + str(nb_clusters) + '/net/network-' + str(run_id) + '-' + str(iteration) + '.pth'
+
     policy_torch = torch.load(policy_path)
 
     state_reconstruction_precision = 1e-7
@@ -178,6 +187,9 @@ if __name__ == '__main__':
                 full_path = os.path.join(save_dir, 'cluster-' + str(n) + '-' + str(iterdisp) + '.png')
                 os.makedirs(save_dir, exist_ok=True)
                 pygame.image.save(viewer._screen, full_path)
+                if iterdisp == 0:
+                    full_path = os.path.join(save_dir, 'cluster-' + str(n) + '.png')
+                    pygame.image.save(viewer._screen, full_path)
 
         images = []
         for iterdisp in range(gif_length):
