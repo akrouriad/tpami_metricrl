@@ -175,6 +175,11 @@ if __name__ == '__main__':
             px = get_image(env, scaling, distance, pitch)
             viewer.display(px)
             w = policy_torch.get_membership(torch.tensor([obs])).detach().numpy().squeeze()
+
+            # mu, chol_sigma = policy_torch(torch.tensor([obs]))
+            # act = torch.distributions.MultivariateNormal(mu, scale_tril=chol_sigma).sample()
+            # obs, _, _, _ = env.step(act.detach().numpy().squeeze())
+
             env.step(policy_torch.means[n].detach().numpy())
             # print('m3', w[3])
             # if w[n] > .2 or iterdisp < 1:

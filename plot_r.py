@@ -101,7 +101,7 @@ def load_data_baselines(res_folder, env, alg_names, nb_runs, nb_epochs, entropy=
 
     for alg_name in alg_names:
         if add_prop_id:
-            subfolder = 'alg_name_'+alg_name
+            subfolder = 'alg_name_' + alg_name
         else:
             subfolder = alg_name
 
@@ -155,10 +155,11 @@ if __name__ == '__main__':
     # envs = ['HalfCheetahBulletEnv-v0']
     temps = [1., 1., .33, .33]
     # n_clusterss = [10, 20, 40]
-    n_clusterss = [40]
-    nb_epochs = 1000
+    n_clusterss = [10]
+    nb_epochs = 970
     # alg_labels = ['Metric-10', 'Metric-20', 'Metric-40', 'PPO', 'TRPO (MLP)', 'TRPO (Linear)']
     alg_labels = ['Metric-10', 'PPO-DiffMetric10', 'TRPO-DiffMetric10', 'PPO', 'TRPO (MLP)']
+    # alg_labels = ['Metric-10', 'PPO-Noise0.1', 'PPO-Noise1.', 'PPO', 'TRPO (MLP)']
     # alg_labels = ['Metric-10', 'PPO-DiffMetric10', 'PPO', 'TRPO (MLP)']
 
     res_folder = './Results/'
@@ -167,6 +168,7 @@ if __name__ == '__main__':
     # diffproto_folder = os.path.join(res_folder, 'diffproto')
     # diffproto_folder = os.path.join(res_folder, 'diffproto_temp')
     diffproto_folder = os.path.join(res_folder, 'diffentrop')
+    # diffproto_folder = os.path.join(res_folder, 'diffnoise')
 
     nb_runs = 25
     clus_sels = ['covr_exp']
@@ -177,7 +179,9 @@ if __name__ == '__main__':
     baselines_mushroom_algs = ['PPO', 'TRPO']
     diffproto_algs = ['PPO', 'TRPO']
     # diffproto_algs = ['PPO']
+
     diffproto_algs = [dpalg + '/nb_centers_' + str(n_clusterss[0]) for dpalg in diffproto_algs]
+    # diffproto_algs = [dpalg + '/init_cluster_noise_' + str(noise) for dpalg in diffproto_algs for noise in [0.1, 1.]]
 
     count = 0
     for temp, env in zip(temps, envs):

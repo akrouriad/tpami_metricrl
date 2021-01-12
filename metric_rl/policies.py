@@ -21,7 +21,7 @@ class Grad1Abs(torch.autograd.Function):
 
 
 class MetricRegressor(nn.Module):
-    def __init__(self, input_shape, output_shape, n_clusters, std_0, temp=1., w_default=1., learnable_centers=False, init_noise=1e-2, **kwargs):
+    def __init__(self, input_shape, output_shape, n_clusters, std_0, temp=1., w_default=1., learnable_centers=False, init_cluster_noise=1e-2, **kwargs):
         super().__init__()
 
         s_dim = input_shape[0]
@@ -42,14 +42,14 @@ class MetricRegressor(nn.Module):
         self._cluster_count = 0
         self.w_default = w_default
         self.e_lb = None
-        self._init_noise = init_noise
+        self._init_cluster_noise = init_cluster_noise
 
     def forward(self, s):
         if self._cluster_count < self._n_clusters:
             if self.centers.requires_grad:
                 for k in range(self._n_clusters):
-                    print(self._init_noise)
-                    self.centers.data[k] = s + torch.randn_like(s) * self._init_noise
+                    print(self._init_cluster_noise)
+                    self.centers.data[k] = s + torch.randn_like(s) * self._init_cluster_noise
                 self._cluster_count = self._n_clusters
             else:
                 self.centers[self._cluster_count] = s
