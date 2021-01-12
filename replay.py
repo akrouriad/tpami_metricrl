@@ -60,7 +60,7 @@ def replay(env_id, horizon, gamma, torch_policy, dt, n_episodes, seed):
 
     # Set experiment
     core = Core(agent, mdp)
-    dataset = core.evaluate(n_episodes=n_episodes, render=True, quiet=False)
+    dataset = core.evaluate(n_episodes=n_episodes, render=False, quiet=False)
 
     J = np.mean(compute_J(dataset, mdp.info.gamma))
     R = np.mean(compute_J(dataset))
