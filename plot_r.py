@@ -156,10 +156,10 @@ if __name__ == '__main__':
     temps = [1., 1., .33, .33]
     # n_clusterss = [10, 20, 40]
     n_clusterss = [10]
-    nb_epochs = 970
+    nb_epochs = 1000
     # alg_labels = ['Metric-10', 'Metric-20', 'Metric-40', 'PPO', 'TRPO (MLP)', 'TRPO (Linear)']
-    alg_labels = ['Metric-10', 'PPO-DiffMetric10', 'TRPO-DiffMetric10', 'PPO', 'TRPO (MLP)']
-    # alg_labels = ['Metric-10', 'PPO-Noise0.1', 'PPO-Noise1.', 'PPO', 'TRPO (MLP)']
+    # alg_labels = ['Metric-10', 'PPO-DiffMetric10', 'TRPO-DiffMetric10', 'PPO', 'TRPO (MLP)']
+    alg_labels = ['Metric-10', 'TRPO-Noise0.1', 'TRPO-Noise1.', 'PPO', 'TRPO (MLP)']
     # alg_labels = ['Metric-10', 'PPO-DiffMetric10', 'PPO', 'TRPO (MLP)']
 
     res_folder = './Results/'
@@ -167,8 +167,8 @@ if __name__ == '__main__':
     baseline_folder = os.path.join(res_folder, 'baselines')
     # diffproto_folder = os.path.join(res_folder, 'diffproto')
     # diffproto_folder = os.path.join(res_folder, 'diffproto_temp')
-    diffproto_folder = os.path.join(res_folder, 'diffentrop')
-    # diffproto_folder = os.path.join(res_folder, 'diffnoise')
+    # diffproto_folder = os.path.join(res_folder, 'diffentrop')
+    diffproto_folder = os.path.join(res_folder, 'diffnoise')
 
     nb_runs = 25
     clus_sels = ['covr_exp']
@@ -177,11 +177,12 @@ if __name__ == '__main__':
     # baselines_algs = ['ppo2', 'trpo_mpi', 'trpo_linear']
     baselines_algs = ['ppo2', 'trpo_mpi']
     baselines_mushroom_algs = ['PPO', 'TRPO']
-    diffproto_algs = ['PPO', 'TRPO']
+    # diffproto_algs = ['PPO', 'TRPO']
     # diffproto_algs = ['PPO']
+    diffproto_algs = ['TRPO']
 
     diffproto_algs = [dpalg + '/nb_centers_' + str(n_clusterss[0]) for dpalg in diffproto_algs]
-    # diffproto_algs = [dpalg + '/init_cluster_noise_' + str(noise) for dpalg in diffproto_algs for noise in [0.1, 1.]]
+    diffproto_algs = [dpalg + '/init_cluster_noise_' + str(noise) for dpalg in diffproto_algs for noise in [0.1, 1.]]
 
     count = 0
     for temp, env in zip(temps, envs):
@@ -189,6 +190,9 @@ if __name__ == '__main__':
 
         if plot_diffproto:
             b_j, b_r = load_data_baselines(diffproto_folder, env, diffproto_algs, nb_runs, nb_epochs, add_prop_id=True)
+            # for k_r in range(len(b_r)):
+            #     new_r = [rr for rr in b_r[k_r] if len(rr) > nb_epochs]
+            #     b_r[k_r] = new_r
             all_j += b_j
             all_r += b_r
 

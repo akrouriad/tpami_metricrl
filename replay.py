@@ -121,7 +121,7 @@ if __name__ == '__main__':
     env_id = 'HalfCheetahBulletEnv-v0'
     # log_name = 'Results/final_medium/HalfCheetahBulletEnv-v0/metricrl_c10hcovr_expdTruet0.33snone'
     # seed = 2
-    log_name = 'Results/diffentrop/env_id_HalfCheetahBulletEnv-v0/alg_name_PPO/nb_centers_10'
+    log_name = 'Results/diffnoise/env_id_HalfCheetahBulletEnv-v0/alg_name_PPO/nb_centers_10/init_cluster_noise_0.1/'
     seed = 5
     iteration = 1001
 
