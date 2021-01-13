@@ -51,6 +51,9 @@ def replay(env_id, horizon, gamma, torch_policy, dt, n_episodes, seed):
 
     if 'BulletEnv-v0' in env_id:
         mdp.render()
+        render = False
+    else:
+        render = True
 
     # Set environment seed
     mdp.env.seed(seed)
@@ -60,7 +63,7 @@ def replay(env_id, horizon, gamma, torch_policy, dt, n_episodes, seed):
 
     # Set experiment
     core = Core(agent, mdp)
-    dataset = core.evaluate(n_episodes=n_episodes, render=False, quiet=False)
+    dataset = core.evaluate(n_episodes=n_episodes, render=render, quiet=False)
 
     J = np.mean(compute_J(dataset, mdp.info.gamma))
     R = np.mean(compute_J(dataset))
