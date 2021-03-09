@@ -58,6 +58,15 @@ def replay(env_id, horizon, gamma, torch_policy, dt, n_episodes, seed):
     # Set environment seed
     mdp.env.seed(seed)
 
+    mdp.env.reset()
+
+    distance = 4
+    pitch = -5
+    mdp.env.env._p.resetDebugVisualizerCamera(cameraTargetPosition=[4.5, 0, 1.],
+                                cameraDistance=distance,
+                                cameraYaw=0.,
+                                cameraPitch=pitch)
+
     # Set agent
     agent = DummyAgent(torch_policy, dt)
 
@@ -101,10 +110,10 @@ def load_policy(log_name, iteration, seed):
 
 if __name__ == '__main__':
     save = True
-    dt = 1/60
+    dt = 1/6
     #dt = 0
 
-    horizon = 100
+    horizon = 10000
     gamma = .99
 
     # env_id = 'AntBulletEnv-v0'
@@ -112,21 +121,25 @@ if __name__ == '__main__':
     # seed = 0
     # iteration = 1001
 
-    # env_id = 'HopperBulletEnv-v0'
-    # # log_name = 'Results/final_medium/HopperBulletEnv-v0/metricrl_c10hcovr_expdTruet1.0snone'
-    # # seed = 7
-    #
-    # # log_name = 'Results/diffproto_temp/env_id_HopperBulletEnv-v0/alg_name_PPO/nb_centers_10'
-    # log_name = 'Results/diffentrop/env_id_HopperBulletEnv-v0/alg_name_TRPO/nb_centers_10'
-    # seed = 23
+    # env_id = 'AntBulletEnv-v0'
+    # log_name = 'Results/diffentrop/env_id_AntBulletEnv-v0/alg_name_PPO/nb_centers_10'
+    # seed = 24
     # iteration = 1001
 
-    env_id = 'HalfCheetahBulletEnv-v0'
+    env_id = 'HopperBulletEnv-v0'
+    log_name = 'Results/final_medium/HopperBulletEnv-v0/metricrl_c10hcovr_expdTruet1.0snone'
+    seed = 12
+    # log_name = 'Results/diffproto_temp/env_id_HopperBulletEnv-v0/alg_name_PPO/nb_centers_10'
+    # log_name = 'Results/diffentrop/env_id_HopperBulletEnv-v0/alg_name_TRPO/nb_centers_10'
+    # seed = 23
+    iteration = 1001
+
+    # env_id = 'HalfCheetahBulletEnv-v0'
     # log_name = 'Results/final_medium/HalfCheetahBulletEnv-v0/metricrl_c10hcovr_expdTruet0.33snone'
     # seed = 2
-    log_name = 'Results/diffnoise/env_id_HalfCheetahBulletEnv-v0/alg_name_PPO/nb_centers_10/init_cluster_noise_0.1/'
-    seed = 5
-    iteration = 1001
+    # # log_name = 'Results/diffentrop/env_id_HalfCheetahBulletEnv-v0/alg_name_PPO/nb_centers_10'
+    # # seed = 5
+    # iteration = 1001
 
     # env_id = 'Pendulum-v0'
     # # log_name = 'Results/final_small2/Pendulum-v0/metricrl_c5hcovr_expdTruet1.0snone'

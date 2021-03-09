@@ -89,15 +89,30 @@ if __name__ == '__main__':
     exp_id = 'final_medium'
     alg_name = 'metricrl'
 
+    env_id = 'AntBulletEnv-v0'
+    postfix = 'c10hcovr_expdTruet0.33snone'
+    run_id = 0
+    cluster_idxs = [5, 4, 6, 2]
+    nb_clusters = 10
+    cluster_idxs = [k for k in range(nb_clusters)]
+    log_name = os.path.join('Results', exp_id, env_id, alg_name + '_' + postfix)
+    print(log_name)
+
     # env_id = 'AntBulletEnv-v0'
-    # postfix = 'c10hcovr_expdTruet0.33snone'
-    # run_id = 0
-    # cluster_idxs = [5, 4, 6, 2]
+    # run_id = 24
+    # nb_clusters = 10
+    # cluster_idxs = [k for k in range(nb_clusters)]
+    # alg = 'PPO'
+
 
     # env_id = 'HopperBulletEnv-v0'
     # postfix = 'c10hcovr_expdTruet1.0snone'
     # run_id = 12
-    # cluster_idxs = [0, 9, 4]
+    # # cluster_idxs = [0, 9, 4]
+    # nb_clusters = 10
+    # cluster_idxs = [k for k in range(nb_clusters)]
+    # log_name = os.path.join('Results', exp_id, env_id, alg_name + '_' + postfix)
+    # print(log_name)
 
     # env_id = 'HopperBulletEnv-v0'
     # # postfix = 'c10hcovr_expdTruet1.0snone'
@@ -109,22 +124,24 @@ if __name__ == '__main__':
     # env_id = 'HalfCheetahBulletEnv-v0'
     # postfix = 'c10hcovr_expdTruet0.33snone'
     # run_id = 2
-    # cluster_idxs = [4, 2, 9, 0]
-
-    env_id = 'HalfCheetahBulletEnv-v0'
-    run_id = 5
-    nb_clusters = 10
-    cluster_idxs = [k for k in range(nb_clusters)]
-    alg = 'PPO'
+    # # cluster_idxs = [4, 2, 9, 0]
+    # nb_clusters = 10
+    # cluster_idxs = [k for k in range(nb_clusters)]
     # log_name = os.path.join('Results', exp_id, env_id, alg_name + '_' + postfix)
     # print(log_name)
+
+    # env_id = 'HalfCheetahBulletEnv-v0'
+    # run_id = 5
+    # nb_clusters = 10
+    # cluster_idxs = [k for k in range(nb_clusters)]
+    # alg = 'PPO'
 
     save = True
     save_dir = os.path.join('Results', 'img', env_id)
     save_dir_gifs = os.path.join(save_dir, 'gifs')
 
-    # policy_path = os.path.join(log_name, 'net/network-' + str(run_id) + '-' + str(iteration) + '.pth')
-    policy_path = 'Results/diffentrop/env_id_' + env_id + '/alg_name_' + alg + '/nb_centers_' + str(nb_clusters) + '/net/network-' + str(run_id) + '-' + str(iteration) + '.pth'
+    policy_path = os.path.join(log_name, 'net/network-' + str(run_id) + '-' + str(iteration) + '.pth')
+    # policy_path = 'Results/diffentrop/env_id_' + env_id + '/alg_name_' + alg + '/nb_centers_' + str(nb_clusters) + '/net/network-' + str(run_id) + '-' + str(iteration) + '.pth'
 
     policy_torch = torch.load(policy_path)
 
