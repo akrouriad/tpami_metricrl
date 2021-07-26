@@ -1,0 +1,3 @@
+torch
+mushroom-rl>=1.7.0
+git+https://git.ias.informatik.tu-darmstadt.de/common/experiment_launcher@master#egg=experiment_launcher>=1.2

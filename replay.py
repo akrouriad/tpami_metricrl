@@ -5,7 +5,7 @@ import pickle
 
 import numpy as np
 
-from mushroom_rl.algorithms import Agent
+from mushroom_rl.core import Agent
 from mushroom_rl.core import Core
 from mushroom_rl.environments import Gym
 from mushroom_rl.utils.dataset import compute_J, parse_dataset

@@ -27,13 +27,11 @@ if __name__ == '__main__':
 
     if exp == 'bigdiff':
         envs = ['HopperBulletEnv-v0', 'Walker2DBulletEnv-v0', 'HalfCheetahBulletEnv-v0', 'AntBulletEnv-v0']
-        horizons = [1000, 1000, 1000, 1000]
         n_epochs = 1000
 
     elif exp == 'smalldiff':
         envs = ['MountainCarContinuous-v0', 'BipedalWalker-v3', 'Pendulum-v0', 'InvertedPendulumBulletEnv-v0',
                 'InvertedPendulumSwingupBulletEnv-v0', 'InvertedDoublePendulumBulletEnv-v0']
-        horizons = [1000, 1600, 200, 1000, 1000, 1000]
         n_epochs = 500
 
     else:
@@ -46,12 +44,11 @@ if __name__ == '__main__':
         n_episodes_test=5,
     )
 
-    for env, horizon in zip(envs, horizons):
-        launcher.add_default_params(horizon=horizon)
+    for env in envs:
         for alg in algs:
             for nb_centers in nb_centers_list:
                 for init_cluster_noise in init_cluster_noises:
-                    launcher.add_experiment(env_id=env,
-                                            alg_name=alg, nb_centers=nb_centers, init_cluster_noise=init_cluster_noise)
+                    launcher.add_experiment(env_id=env, alg_name=alg, nb_centers=nb_centers,
+                                            init_cluster_noise=init_cluster_noise)
 
         launcher.run(local, test)

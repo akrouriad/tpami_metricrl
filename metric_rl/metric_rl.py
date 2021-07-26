@@ -3,18 +3,18 @@ from tqdm import tqdm
 
 import torch
 
-from mushroom_rl.algorithms.agent import Agent
+from mushroom_rl.core import Agent
 from mushroom_rl.approximators import Regressor
 from mushroom_rl.approximators.parametric import TorchApproximator
 from mushroom_rl.utils.dataset import parse_dataset
 from mushroom_rl.utils.torch import to_float_tensor
 from mushroom_rl.utils.minibatches import minibatch_generator
 
-from .projections.cluster_weights import cweight_mean_proj
-from .projections.gaussian import lin_gauss_kl_proj, utils_from_chol, mean_diff
-from .rl_shared import get_targets
-from .policies import MetricPolicy
-from .cluster_randomized_optimization import randomized_swap_optimization
+from metric_rl.projections.cluster_weights import cweight_mean_proj
+from metric_rl.projections.gaussian import lin_gauss_kl_proj, utils_from_chol, mean_diff
+from metric_rl.rl_shared import get_targets
+from metric_rl.policies import MetricPolicy
+from metric_rl.cluster_randomized_optimization import randomized_swap_optimization
 
 
 class MetricRL(Agent):

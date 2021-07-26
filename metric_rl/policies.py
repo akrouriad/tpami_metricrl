@@ -6,6 +6,7 @@ from mushroom_rl.policy import TorchPolicy
 from mushroom_rl.utils.torch import to_float_tensor
 from metric_rl.projections.gaussian import project_entrop
 
+
 class Grad1Abs(torch.autograd.Function):
     @staticmethod
     def forward(ctx, input):
@@ -21,7 +22,8 @@ class Grad1Abs(torch.autograd.Function):
 
 
 class MetricRegressor(nn.Module):
-    def __init__(self, input_shape, output_shape, n_clusters, std_0, temp=1., w_default=1., learnable_centers=False, init_cluster_noise=1e-2, **kwargs):
+    def __init__(self, input_shape, output_shape, n_clusters, std_0, temp=1., w_default=1., learnable_centers=False,
+                 init_cluster_noise=1e-2, **kwargs):
         super().__init__()
 
         s_dim = input_shape[0]
@@ -108,9 +110,11 @@ class MetricRegressor(nn.Module):
 
 
 class MetricPolicy(TorchPolicy):
-    def __init__(self, input_shape, output_shape, n_clusters, std_0, temp=1., use_cuda=False, learnable_centers=False, init_cluster_noise=1e-2):
+    def __init__(self, input_shape, output_shape, n_clusters, std_0, temp=1., use_cuda=False, learnable_centers=False,
+                 init_cluster_noise=1e-2):
         self._a_dim = output_shape[0]
-        self._regressor = MetricRegressor(input_shape, output_shape, n_clusters, std_0, temp=temp, learnable_centers=learnable_centers, init_cluster_noise=init_cluster_noise)
+        self._regressor = MetricRegressor(input_shape, output_shape, n_clusters, std_0, temp=temp,
+                                          learnable_centers=learnable_centers, init_cluster_noise=init_cluster_noise)
 
         super().__init__(use_cuda)
 

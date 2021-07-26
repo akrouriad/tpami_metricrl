@@ -1,17 +1,14 @@
-import os
 import argparse
 
 import torch
 import numpy as np
-from tqdm import tqdm
 
-from mushroom_rl.core import Core
+from mushroom_rl.core import Core, Logger
 from mushroom_rl.environments import Gym
 from mushroom_rl.algorithms.actor_critic import PPO, TRPO
-from mushroom_rl.policy import GaussianTorchPolicy
 from mushroom_rl.utils.dataset import compute_J
 
-from metric_rl.logger import save_parameters, Logger
+from metric_rl.utils import save_parameters
 from metric_rl.rl_shared import MLP, TwoPhaseEntropProfile
 
 import torch.optim as optim
@@ -19,32 +16,24 @@ import torch.nn.functional as F
 
 from metric_rl.policies import MetricPolicy
 
-def experiment(alg_name, env_id, horizon, gamma,
-               n_epochs, n_steps, n_steps_per_fit, n_episodes_test,
-               n_models_v, seed, results_dir, nb_centers, init_cluster_noise):
-    print(alg_name)
-    print(results_dir)
-    print(init_cluster_noise)
-    sub_dir_net = 'net'
-    os.makedirs(results_dir, exist_ok=True)
-    os.makedirs(os.path.join(results_dir, sub_dir_net), exist_ok=True)
+from experiment_launcher import get_default_params
 
+
+def experiment(alg_name, env_id, n_epochs=1000, n_steps=3000, n_steps_per_fit=3000, n_episodes_test=5, n_models_v=1,
+               nb_centers=10, init_cluster_noise=1e-2, seed=0, results_dir=None):
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.set_num_threads(1)
 
-    logger = Logger(results_dir, sub_dir_net)
+    logger = Logger(log_name='DiffMetricRL_' + alg_name, results_dir=results_dir, log_console=results_dir is not None,
+                    seed=seed)
 
-    mdp = Gym(env_id, horizon, gamma)
+    mdp = Gym(env_id)
 
     # Set environment seed
     mdp.env.seed(seed)
 
     # Set parameters
-    policy_params = dict(std_0=1.,
-                         size_list=[64, 64],
-                         use_cuda=False)
-
     critic_params = dict(network=MLP,
                          loss=F.mse_loss,
                          input_shape=mdp.info.observation_space.shape,
@@ -57,12 +46,8 @@ def experiment(alg_name, env_id, horizon, gamma,
 
     alg, alg_params = get_alg_and_parameters(alg_name)
 
-    # policy = GaussianTorchPolicy(MLP,
-    #                              mdp.info.observation_space.shape,
-    #                              mdp.info.action_space.shape,
-    #                              **policy_params)
-
-    policy = MetricPolicy(mdp.info.observation_space.shape, mdp.info.action_space.shape, nb_centers, std_0=1., learnable_centers=True, init_cluster_noise=init_cluster_noise)
+    policy = MetricPolicy(mdp.info.observation_space.shape, mdp.info.action_space.shape, nb_centers, std_0=1.,
+                          learnable_centers=True, init_cluster_noise=init_cluster_noise)
     entropy_profile = TwoPhaseEntropProfile(policy, e_reduc=0.0075, e_thresh_mult=.5)
 
     agent = alg(mdp.info, policy, critic_params=critic_params, **alg_params)
@@ -73,10 +58,6 @@ def experiment(alg_name, env_id, horizon, gamma,
     # Run learning
     core = Core(agent, mdp)
 
-    J_list = list()
-    R_list = list()
-    E_list = list()
-
     # Initial evaluation
     dataset = core.evaluate(n_episodes=n_episodes_test, render=False)
 
@@ -84,15 +65,8 @@ def experiment(alg_name, env_id, horizon, gamma,
     R = np.mean(compute_J(dataset))
     E = agent.policy.entropy()
 
-    J_list.append(J)
-    R_list.append(R)
-    E_list.append(E)
-
-    logger.save(J=J_list, R=R_list, E=E_list, seed=seed)
-
-    tqdm.write('EPOCH 0')
-    tqdm.write('J: {}, R: {}, entropy: {}'.format(J, R, E))
-    tqdm.write('##################################################################################################')
+    logger.log_numpy(J=J, R=R, E=E)
+    logger.epoch_info(0, J=J, R=R, E=E)
 
     # Learning
     for it in range(n_epochs):
@@ -103,27 +77,20 @@ def experiment(alg_name, env_id, horizon, gamma,
         R = np.mean(compute_J(dataset))
         E = agent.policy.entropy()
 
-        J_list.append(J)
-        R_list.append(R)
-        E_list.append(E)
-
-        logger.save(J=J_list, R=R_list, E=E_list, seed=seed)
-
-        tqdm.write('END OF EPOCH ' + str(it + 1))
-        tqdm.write('J: {}, R: {}, entropy: {}'.format(J, R, E))
-        tqdm.write('##################################################################################################')
+        logger.log_numpy(J=J, R=R, E=E)
+        logger.epoch_info(it + 1, J=J, R=R, E=E)
 
         # update entropy lb
         policy.set_chol_t(policy.get_chol_t())
         policy._regressor.e_lb = entropy_profile.get_e_lb()
 
+    logger.log_agent(agent)
 
-    logger.save(network=agent.policy._regressor, seed=seed)
 
 def get_alg_and_parameters(alg_name):
     if alg_name == 'PPO':
         alg_params = dict(actor_optimizer={'class': optim.Adam,
-                                       'params': {'lr': 3e-4}},
+                                           'params': {'lr': 3e-4}},
                           n_epochs_policy=10,
                           batch_size=64,
                           eps_ppo=.2,
@@ -148,21 +115,6 @@ def get_alg_and_parameters(alg_name):
         raise RuntimeError
 
 
-def default_params():
-    defaults = dict(
-        gamma=.99,
-        n_epochs=1000,
-        n_steps=3000,
-        n_steps_per_fit=3000,
-        n_episodes_test=5,
-        n_models_v=1,
-        nb_centers=10,
-        init_cluster_noise=1e-2,
-    )
-
-    return defaults
-
-
 def parse_args():
     parser = argparse.ArgumentParser()
 
@@ -183,7 +135,7 @@ def parse_args():
     parser.add_argument('--nb-centers', type=int)
     parser.add_argument('--init-cluster-noise', type=float)
 
-    parser.set_defaults(**default_params())
+    parser.set_defaults(**get_default_params(experiment))
     args = parser.parse_args()
     return vars(args)
 

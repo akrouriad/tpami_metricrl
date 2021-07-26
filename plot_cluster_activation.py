@@ -7,8 +7,7 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 from matplotlib import rc
 
-from mushroom_rl.algorithms import Agent
-from mushroom_rl.core import Core
+from mushroom_rl.core import Core, Agent
 from mushroom_rl.environments import Gym
 from mushroom_rl.utils.dataset import parse_dataset
 from mushroom_rl.utils.torch import to_float_tensor

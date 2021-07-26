@@ -1,4 +1,3 @@
-import os
 import argparse
 
 import torch
@@ -6,34 +5,34 @@ import torch.optim as optim
 import torch.nn.functional as F
 
 import numpy as np
-from tqdm import tqdm
 
-from mushroom_rl.core import Core
+from mushroom_rl.core import Core, Logger
 from mushroom_rl.environments import Gym
 from mushroom_rl.utils.dataset import compute_J
 
 from metric_rl.metric_rl import MetricRL
-from metric_rl.logger import save_parameters, Logger
+from metric_rl.utils import save_parameters
 from metric_rl.rl_shared import TwoPhaseEntropProfile, MLP
 
+from experiment_launcher import get_default_params
 
-def experiment(env_id, horizon, gamma,
-               n_clusters, no_delete, temp,
-               n_epochs, n_steps, n_steps_per_fit,
-               n_episodes_test, seed, results_dir):
-    print('Metric RL')
-    os.makedirs(results_dir, exist_ok=True)
+
+def experiment(env_id, n_epochs=1000, n_steps=3000, n_steps_per_fit=3000, n_episodes_test=5, n_clusters=10,
+               no_delete=True, temp=1., seed=0, results_dir=None):
 
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.set_num_threads(1)
 
-    logger = Logger(results_dir, 'net')
+    logger = Logger(log_name='MetricRL', results_dir=results_dir, log_console=results_dir is not None, seed=seed)
+
+    logger.info('Running MetricRL experiment')
+    logger.strong_line()
 
     params = get_parameters(n_clusters, temp)
-    save_parameters(results_dir, params)
+    save_parameters(logger.path, params)
 
-    mdp = Gym(env_id, horizon, gamma)
+    mdp = Gym(env_id)
 
     # Set environment seed
     mdp.env.seed(seed)
@@ -49,10 +48,6 @@ def experiment(env_id, horizon, gamma,
 
     core = Core(agent, mdp)
 
-    J_list = list()
-    R_list = list()
-    E_list = list()
-
     # Initial evaluation
     dataset = core.evaluate(n_episodes=n_episodes_test, render=False)
 
@@ -60,15 +55,8 @@ def experiment(env_id, horizon, gamma,
     R = np.mean(compute_J(dataset))
     E = agent.policy.entropy()
 
-    J_list.append(J)
-    R_list.append(R)
-    E_list.append(E)
-
-    logger.save(J=J_list, R=R_list, E=E_list, seed=seed)
-
-    tqdm.write('EPOCH 0')
-    tqdm.write('J: {}, R: {}, entropy: {}'.format(J, R, E))
-    tqdm.write('##################################################################################################')
+    logger.log_numpy(J=J, R=R, E=E)
+    logger.epoch_info(0, J=J, R=R, E=E)
 
     # Learning
     for it in range(n_epochs):
@@ -79,18 +67,10 @@ def experiment(env_id, horizon, gamma,
         R = np.mean(compute_J(dataset))
         E = agent.policy.entropy()
 
-        J_list.append(J)
-        R_list.append(R)
-        E_list.append(E)
+        logger.log_numpy(J=J, R=R, E=E)
+        logger.epoch_info(it+1, J=J, R=R, E=E, cweights=agent.policy._regressor._c_weights)
 
-        logger.save(J=J_list, R=R_list, E=E_list, seed=seed)
-
-        tqdm.write('END OF EPOCH ' + str(it))
-        tqdm.write('J: {}, R: {}, entropy: {}'.format(J, R, E))
-        tqdm.write('cweights {}'.format(agent.policy._regressor._c_weights))
-        tqdm.write('##################################################################################################')
-
-    logger.save(network=agent.policy._regressor, seed=seed)
+    logger.log_agent(agent)
 
 
 def get_parameters(n_clusters, temp):
@@ -131,21 +111,6 @@ def get_parameters(n_clusters, temp):
     return params
 
 
-def default_params():
-    defaults = dict(
-        gamma=.99,
-        n_epochs=1000,
-        n_steps=3000,
-        n_steps_per_fit=3000,
-        n_episodes_test=5,
-        n_clusters=10,
-        no_delete=True,
-        temp=1.,
-    )
-
-    return defaults
-
-
 def parse_args():
     parser = argparse.ArgumentParser()
 
@@ -165,7 +130,7 @@ def parse_args():
     parser.add_argument('--seed', type=int)
     parser.add_argument('--results-dir', type=str)
 
-    parser.set_defaults(**default_params())
+    parser.set_defaults(**get_default_params(experiment))
     args = parser.parse_args()
     return vars(args)
 

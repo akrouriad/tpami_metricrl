@@ -18,7 +18,6 @@ if __name__ == '__main__':
 
     if exp == 'big':
         envs = ['HopperBulletEnv-v0', 'Walker2DBulletEnv-v0', 'HalfCheetahBulletEnv-v0', 'AntBulletEnv-v0']
-        horizons = [1000, 1000, 1000, 1000]
         temp_per_envs = [1., 1., .33, .33]
         n_epochs = 1000
 
@@ -27,7 +26,6 @@ if __name__ == '__main__':
     elif exp == 'small':
         envs = ['MountainCarContinuous-v0', 'BipedalWalker-v3', 'Pendulum-v0', 'InvertedPendulumBulletEnv-v0',
                 'InvertedPendulumSwingupBulletEnv-v0', 'InvertedDoublePendulumBulletEnv-v0']
-        horizons = [1000, 1600, 200, 1000, 1000, 1000]
         temp_per_envs = [1., 1., 1., 1., 1., 1., 1.]
         n_epochs = 500
 
@@ -43,11 +41,9 @@ if __name__ == '__main__':
         n_episodes_test=5,
     )
 
-    for env, horizon, temp in zip(envs, horizons, temp_per_envs):
-        launcher.add_default_params(horizon=horizon,
-                                    temp=temp)
+    for env, temp in zip(envs, temp_per_envs):
+        launcher.add_default_params(temp=temp)
         for n_clusters in n_clusterss:
-            launcher.add_experiment(env_id=env,
-                                    n_clusters=n_clusters)
+            launcher.add_experiment(env_id=env, n_clusters=n_clusters)
 
         launcher.run(local, test)
