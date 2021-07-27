@@ -1,5 +1,4 @@
 import numpy as np
-from tqdm import tqdm
 
 import torch
 
@@ -110,13 +109,13 @@ class MetricRL(Agent):
 
             if swapped or deleted:
                 # Optimize mean and covariance
-                print('doing partial update')
+                self._log('doing partial update')
                 old['intermediate_cmeans'] = self.policy.get_cmeans_t().clone().detach()
                 self._update_mean_n_cov(obs, act, adv_t, old, entropy_lb)
                 full_batch_proj = False
             else:
                 # Optimize cw, mean and cov
-                print('doing full update')
+                self._log('doing full update')
                 self._update_all_parameters(obs, act, adv_t, old, entropy_lb)
 
         # Actor Update
@@ -131,7 +130,7 @@ class MetricRL(Agent):
         # logging
         logging_kl = torch.mean(torch.distributions.kl.kl_divergence(self.policy.distribution_t(obs), old['pol_dist']))
         mean_covr = torch.mean(torch.sum(self.policy.get_membership_t(obs), dim=1))
-        tqdm.write('KL {} Covr {}'.format(logging_kl, mean_covr))
+        self._log(f'KL {logging_kl} Covr {mean_covr}')
 
     def _add_cluster_centers(self, obs, act, adv_t):
         # adding clusters
@@ -145,7 +144,7 @@ class MetricRL(Agent):
                 self.policy.set_cmeans_t(self.policy._regressor.means)
 
                 ba_ind += 1
-        tqdm.write('added {} clusters'.format(ba_ind))
+        self._log(f'added {ba_ind} clusters')
 
     def _update_mean_n_cov(self, obs, act, adv_t, old, entropy_lb):
         # Compute mean projection (nu)
@@ -184,7 +183,7 @@ class MetricRL(Agent):
                 deleted.append(k)
             else:
                 self.policy._regressor._c_weights.data[k] = cw
-        print('deleted {} clusters'.format(len(deleted)))
+        self._log(f'deleted {len(deleted)} clusters')
         if deleted:
             high_adv_idxs = torch.topk(adv, k=len(deleted), dim=0)[1]
             for k, idx in zip(deleted, high_adv_idxs):
@@ -207,11 +206,11 @@ class MetricRL(Agent):
                 inc_ub = inc
         for cwi in deleted:
             self.policy._regressor._c_weights.data[cwi] = inc_lb
-        print('increased cluster weights to {}'.format(inc_lb))
+        self._log(f'increased cluster weights to {inc_lb}')
 
     def _swap_clusters_covr(self, obs, act, old):
         base_perf = torch.mean(old['membership'])
-        print('init covr', base_perf)
+        self._log(f'init covr {base_perf}')
 
         high_heur_idxs = torch.argsort(torch.sum(old['membership'], dim=1), dim=0, descending=True)
         remaining_idx = [k for k in range(self.policy._regressor._n_clusters)]
@@ -246,7 +245,7 @@ class MetricRL(Agent):
                 break
         new_pol_dist = self.policy.distribution_t(obs)
         logging_kl = torch.mean(torch.distributions.kl.kl_divergence(new_pol_dist, old['pol_dist']))
-        print('Nb swapped clusters: {}. KL: {}'.format(self.policy._regressor._n_clusters - len(remaining_idx), logging_kl))
+        self._log(f'Nb swapped clusters: {self.policy._regressor._n_clusters - len(remaining_idx)}. KL: {logging_kl}')
 
     def _random_swap_clusters(self, obs, old, act, adv):
         candidates = obs.detach().numpy()
@@ -278,7 +277,8 @@ class MetricRL(Agent):
         while True:
             c_best = randomized_swap_optimization(c_0, candidates, cluster_h, sample_h,
                                                   bound_function, evaluation_function,
-                                                  int(np.ceil(self._n_swaps)), self._n_samples)
+                                                  int(np.ceil(self._n_swaps)), self._n_samples,
+                                                  self._logger)
 
             if np.array_equal(c_best, c_0):
                 self._n_swaps /= 2
@@ -294,12 +294,12 @@ class MetricRL(Agent):
 
             new_pol_dist = self.policy.distribution_t(obs)
             logging_kl = torch.mean(torch.distributions.kl.kl_divergence(new_pol_dist, old['pol_dist']))
-            print('Nb swapped clusters: {}. KL: {}'.format(int(np.ceil(self._n_swaps)), logging_kl))
+            self._log(f'Nb swapped clusters: {int(np.ceil(self._n_swaps))}. KL: {logging_kl}')
 
             self._n_swaps *= 1.8
             self._n_swaps = np.minimum(self._n_swaps, self.policy.n_clusters)
         else:
-            print('Nb swapped clusters: 0. KL: 0.0')
+            self._log('Nb swapped clusters: 0. KL: 0.0')
         return swapped
 
     def _update_all_parameters(self, obs, act, adv_t, old, entropy_lb):
@@ -370,4 +370,8 @@ class MetricRL(Agent):
 
         self.policy.set_cmeans_t(cmeans_nu)
         self.policy.set_chol_t(proj_d['chol'])
+
+    def _log(self, message):
+        if self._logger:
+            self._logger.info(message)
 

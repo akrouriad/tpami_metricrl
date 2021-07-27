@@ -46,6 +46,8 @@ def experiment(env_id, n_epochs=1000, n_steps=3000, n_steps_per_fit=3000, n_epis
 
     agent = MetricRL(mdp.info, **params)
 
+    agent.set_logger(logger)
+
     core = Core(agent, mdp)
 
     # Initial evaluation
@@ -68,7 +70,7 @@ def experiment(env_id, n_epochs=1000, n_steps=3000, n_steps_per_fit=3000, n_epis
         E = agent.policy.entropy()
 
         logger.log_numpy(J=J, R=R, E=E)
-        logger.epoch_info(it+1, J=J, R=R, E=E, cweights=agent.policy._regressor._c_weights)
+        logger.epoch_info(it+1, J=J, R=R, E=E, cweights=agent.policy._regressor._c_weights.data.cpu().numpy())
 
     logger.log_agent(agent)
 

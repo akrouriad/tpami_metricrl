@@ -47,13 +47,13 @@ class BoltzmannSampler(Sampler):
 
 def randomized_swap_optimization(c_0, candidates, cluster_h, sample_h,
                                  bound_function, evaluation_function,
-                                 n_swaps, n_samples):
+                                 n_swaps, n_samples, logger=None):
 
-    print('---')
-    print('Running random swapping routine')
-    print('n_clusters: ', len(cluster_h), ', n_candidates: ', len(sample_h))
-    print('n_swaps: ', n_swaps, ', n_samples: ', n_samples)
-    print('---')
+    if logger:
+        logger.info('Running random swapping routine')
+        logger.info(f'n_clusters: {len(cluster_h)}, n_candidates: {len(sample_h)}')
+        logger.info(f'n_swaps: {n_swaps}, n_samples:  {n_samples}')
+        logger.weak_line()
 
     cluster_index_sampler_data = dict(sampling_class=PolynomialSampling, params=dict(exponent=1))
     cluster_center_sampler_data = dict(sampling_class=PolynomialSampling, params=dict(exponent=1))
