@@ -3,12 +3,17 @@ from experiment_launcher import Launcher
 if __name__ == '__main__':
     local = False
     test = False
-    exp = 'bigdiff'
-    #exp = 'smalldiff'
+    
+    exp = 'big'
+    # exp = 'small'
+    
+    exp_name = 'metricrl_diff'
+    python_file = 'exp_gym_diffmetric',
+    # exp_name = 'deep_baselines'
+    # python_file = 'exp_gym_deep'
 
-    launcher = Launcher(exp_name='baselines_diff_mushroom',
-                        # python_file='exp_gym_deep',
-                        python_file='exp_gym_diffmetric',
+    launcher = Launcher(exp_name=exp_name,
+                        python_file=python_file,
                         # n_exp=25,
                         n_exp=25,
                         memory=2000,
@@ -25,11 +30,11 @@ if __name__ == '__main__':
     nb_centers_list = [10]
     init_cluster_noises = [0.1, 1.]
 
-    if exp == 'bigdiff':
+    if exp == 'big':
         envs = ['HopperBulletEnv-v0', 'Walker2DBulletEnv-v0', 'HalfCheetahBulletEnv-v0', 'AntBulletEnv-v0']
         n_epochs = 1000
 
-    elif exp == 'smalldiff':
+    elif exp == 'small':
         envs = ['MountainCarContinuous-v0', 'BipedalWalker-v3', 'Pendulum-v0', 'InvertedPendulumBulletEnv-v0',
                 'InvertedPendulumSwingupBulletEnv-v0', 'InvertedDoublePendulumBulletEnv-v0']
         n_epochs = 500
