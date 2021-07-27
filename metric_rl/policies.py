@@ -121,6 +121,8 @@ class MetricPolicy(TorchPolicy):
         if self._use_cuda:
             self._regressor.cuda()
 
+        self._add_save_attr(_a_dim='primitive', _regressor='torch')
+
     def draw_action_t(self, state):
         return self.distribution_t(state).sample()
 

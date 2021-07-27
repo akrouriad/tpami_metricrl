@@ -8,6 +8,7 @@ from mushroom_rl.approximators.parametric import TorchApproximator
 from mushroom_rl.utils.dataset import parse_dataset
 from mushroom_rl.utils.torch import to_float_tensor
 from mushroom_rl.utils.minibatches import minibatch_generator
+from mushroom_rl.utils.torch import update_optimizer_parameters
 
 from metric_rl.projections.cluster_weights import cweight_mean_proj
 from metric_rl.projections.gaussian import lin_gauss_kl_proj, utils_from_chol, mean_diff
@@ -52,6 +53,26 @@ class MetricRL(Agent):
 
         self._iter = 0
         super().__init__(mdp_info, policy)
+
+        self._add_save_attr(_use_cuda='primitive',
+                            _actor_optimizers='torch',
+                            _temp_lr='primitive',
+                            _temp_base_lr='primitive',
+                            _temp_optimizer='torch',
+                            _n_epochs_per_fit='primitive',
+                            _batch_size='primitive',
+                            _critic='mushroom',
+                            _do_delete='primitive',
+                            _e_profile='mushroom',
+                            _max_kl='primitive',
+                            _kl_temp='primitive',
+                            _kl_del='primitive',
+                            _kl_cw_after_del='primitive',
+                            _lambda='primitive',
+                            _n_swaps='primitive',
+                            _n_samples='primitive',
+                            _iter='primitive'
+        )
 
     def fit(self, dataset):
         # Get dataset
@@ -375,3 +396,10 @@ class MetricRL(Agent):
         if self._logger:
             self._logger.info(message)
 
+    def _post_load(self):
+        self._e_profile.set_policy(self.policy)
+
+        update_optimizer_parameters(self._actor_optimizers[0],[self.policy._regressor._c_weights])
+        update_optimizer_parameters(self._actor_optimizers[1], [self.policy._regressor.means])
+        update_optimizer_parameters(self._actor_optimizers[2], [self.policy._regressor._log_sigma])
+        update_optimizer_parameters(self._temp_optimizer, [self.policy._regressor._log_temp])

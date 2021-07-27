@@ -2,8 +2,10 @@ import torch
 import torch.nn as nn
 import numpy as np
 
+from mushroom_rl.core import Serializable
 
-class TwoPhaseEntropProfile:
+
+class TwoPhaseEntropProfile(Serializable):
     def __init__(self, policy, e_reduc, e_thresh_mult=.5):
         self.init_entropy = policy.entropy()
         self._policy = policy
@@ -11,6 +13,20 @@ class TwoPhaseEntropProfile:
         self._e_thresh = e_thresh_mult * self.init_entropy
         self._phase = 1
         self._iter = 0
+
+        super().__init__()
+
+        self._add_save_attr(
+           init_entropy='primitive',
+           _policy='mushroom!',
+           _e_reduc='primitive',
+           _e_thresh='primitive',
+           _phase='primitive',
+           _iter='primitive'
+        )
+
+    def set_policy(self, policy):
+        self._policy = policy
 
     def get_e_lb(self):
         if self._phase == 1 and self._policy.entropy() > self._e_thresh:
