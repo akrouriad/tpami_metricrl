@@ -115,8 +115,6 @@ def parse_args():
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--env-id", type=str)
-    parser.add_argument("--horizon", type=int)
-    parser.add_argument('--gamma', type=float)
 
     parser.add_argument("--n-clusters", type=int)
     parser.add_argument("--temp", type=float)

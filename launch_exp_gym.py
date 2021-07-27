@@ -14,6 +14,7 @@ if __name__ == '__main__':
                         minutes=0,
                         seconds=0,
                         n_jobs=-1,
+                        partition='test24',
                         use_timestamp=True)
 
     if exp == 'big':

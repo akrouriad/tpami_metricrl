@@ -120,8 +120,6 @@ def parse_args():
 
     parser.add_argument('--alg-name', type=str)
     parser.add_argument("--env-id", type=str)
-    parser.add_argument("--horizon", type=int)
-    parser.add_argument('--gamma', type=float)
 
     parser.add_argument("--n-models-v", type=int)
 

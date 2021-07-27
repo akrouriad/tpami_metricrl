@@ -8,7 +8,7 @@ if __name__ == '__main__':
     # exp = 'small'
     
     exp_name = 'metricrl_diff'
-    python_file = 'exp_gym_diffmetric',
+    python_file = 'exp_gym_diffmetric'
     # exp_name = 'deep_baselines'
     # python_file = 'exp_gym_deep'
 
@@ -21,7 +21,7 @@ if __name__ == '__main__':
                         minutes=0,
                         seconds=0,
                         n_jobs=-1,
-                        # n_jobs=25,
+                        partition='test24',
                         use_timestamp=True)
 
     algs = ['PPO', 'TRPO']
