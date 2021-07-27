@@ -1,7 +1,7 @@
 from experiment_launcher import Launcher
 
 if __name__ == '__main__':
-    local = True
+    local = False
     test = False
     exp = 'big'
     #exp = 'small'
