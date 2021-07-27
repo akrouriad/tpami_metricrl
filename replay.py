@@ -108,6 +108,3 @@ if __name__ == '__main__':
     path = Path(args.path) / f'agent-{args.seed}.msh'
 
     replay(path, args.env_id, n_episodes=args.n_episodes, seed=args.seed, save=args.save, dt=args.dt)
-
-
-
