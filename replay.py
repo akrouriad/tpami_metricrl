@@ -1,6 +1,7 @@
 import os
 import torch
 import argparse
+import time
 
 import numpy as np
 
@@ -11,9 +12,17 @@ from mushroom_rl.environments import Gym
 from mushroom_rl.utils.dataset import compute_J, parse_dataset
 
 
-def replay(path, env_id, n_episodes, seed, save):
+class PauseCallback:
+    def __init__(self, dt):
+        self._dt = dt
 
-    logger = Logger(log_name='Metric RL', results_dir='logs' if save else None)
+    def __call__(self, *args, **kwargs):
+        time.sleep(self._dt)
+
+
+def replay(path, env_id, n_episodes, seed, save, dt):
+
+    logger = Logger(log_name='MetricRL', results_dir='logs' if save else None)
     logger.info(f'Replaying MetricRL agent in {path}')
 
     np.random.seed(seed)
@@ -43,7 +52,7 @@ def replay(path, env_id, n_episodes, seed, save):
                                                   cameraPitch=pitch)
 
     # Set experiment
-    core = Core(agent, mdp)
+    core = Core(agent, mdp, callback_step=PauseCallback(dt))
     dataset = core.evaluate(n_episodes=n_episodes, render=render, quiet=False)
 
     J = np.mean(compute_J(dataset, mdp.info.gamma))
@@ -91,16 +100,14 @@ if __name__ == '__main__':
                         default='HopperBulletEnv-v0')
     parser.add_argument("--seed", '-s', type=int, default=0)
     parser.add_argument("--n-episodes", '-n', type=int, default=1)
+    parser.add_argument("--save", action='store_true')
+    parser.add_argument("--dt", type=float, default=4./240.)
 
     args = parser.parse_args()
 
-    save = False
-
-    iteration = 1001
-
     path = Path(args.path) / f'agent-{args.seed}.msh'
 
-    replay(path, args.env_id, n_episodes=args.n_episodes, seed=args.seed, save=save)
+    replay(path, args.env_id, n_episodes=args.n_episodes, seed=args.seed, save=args.save, dt=args.dt)
 
 
 
