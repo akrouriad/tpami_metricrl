@@ -1,53 +1,27 @@
 import os
 import torch
-import time
-import pickle
+import argparse
 
 import numpy as np
 
-from mushroom_rl.core import Agent
-from mushroom_rl.core import Core
+from pathlib import Path
+
+from mushroom_rl.core import Core, Agent, Logger
 from mushroom_rl.environments import Gym
 from mushroom_rl.utils.dataset import compute_J, parse_dataset
-from mushroom_rl.utils.torch import to_float_tensor
 
 
-class DummyAgent(Agent):
-    def __init__(self, torch_policy, dt, deterministic=True):
-        self._regressor = torch_policy
-        self._deterministic = deterministic
-        self._dt = dt
+def replay(path, env_id, n_episodes, seed, save):
 
-    def draw_action(self, state):
+    logger = Logger(log_name='Metric RL', results_dir='logs' if save else None)
+    logger.info(f'Replaying MetricRL agent in {path}')
 
-        time.sleep(self._dt)
-        with torch.no_grad():
-            s = to_float_tensor(np.atleast_2d(state), False)
-
-            mu, chol_sigma = self._regressor(s)
-
-            if self._deterministic:
-                return torch.squeeze(mu, dim=0).detach().cpu().numpy()
-            else:
-                dist = torch.distributions.MultivariateNormal(mu, scale_tril=chol_sigma)
-                a = dist.sample()
-
-                return torch.squeeze(a, dim=0).detach().cpu().numpy()
-
-    def episode_start(self):
-        pass
-
-    def fit(self, dataset):
-        pass
-
-
-def replay(env_id, horizon, gamma, torch_policy, dt, n_episodes, seed):
-    print('Metric RL')
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.set_num_threads(1)
 
-    mdp = Gym(env_id, horizon, gamma)
+    mdp = Gym(env_id)
+    agent = Agent.load(path)
 
     if 'BulletEnv-v0' in env_id:
         mdp.render()
@@ -62,13 +36,11 @@ def replay(env_id, horizon, gamma, torch_policy, dt, n_episodes, seed):
 
     distance = 4
     pitch = -5
-    mdp.env.env._p.resetDebugVisualizerCamera(cameraTargetPosition=[4.5, 0, 1.],
-                                cameraDistance=distance,
-                                cameraYaw=0.,
-                                cameraPitch=pitch)
-
-    # Set agent
-    agent = DummyAgent(torch_policy, dt)
+    if 'BulletEnv-v0' in env_id:
+        mdp.env.env._p.resetDebugVisualizerCamera(cameraTargetPosition=[4.5, 0, 1.],
+                                                  cameraDistance=distance,
+                                                  cameraYaw=0.,
+                                                  cameraPitch=pitch)
 
     # Set experiment
     core = Core(agent, mdp)
@@ -76,16 +48,18 @@ def replay(env_id, horizon, gamma, torch_policy, dt, n_episodes, seed):
 
     J = np.mean(compute_J(dataset, mdp.info.gamma))
     R = np.mean(compute_J(dataset))
-    print('J: {}, R: {}'.format(J, R))
+    logger.epoch_info(0, J=J, R=R)
 
     s, *_ = parse_dataset(dataset)
-    w = torch.mean(agent._regressor.get_membership(torch.tensor(s)), axis=0)
+    w = torch.mean(agent.policy._regressor.get_membership(torch.tensor(s)), axis=0)
     _, top_w = torch.topk(w, 5)
-    c = agent._regressor.get_c_weights()
+    c = agent.policy._regressor.get_c_weights()
     _, top_c = torch.topk(c, 5)
 
-    print('w: ', w.detach().numpy(), ' top: ', top_w.detach().numpy())
-    print('c: ', w.detach().numpy(), ' top: ', top_c.detach().numpy())
+    logger.info(f'w: {w.detach().numpy()})')
+    logger.info(f'top w: {top_w.detach().numpy()}')
+    logger.info(f'c: {w.detach().numpy()}')
+    logger.info(f'top c: {top_c.detach().numpy()}')
 
     if env_id == 'Pendulum-v0':
         w = agent._regressor.get_membership(torch.tensor(s)).detach().numpy()
@@ -93,12 +67,12 @@ def replay(env_id, horizon, gamma, torch_policy, dt, n_episodes, seed):
 
         w_tot = np.concatenate([w, w_default], axis=1)
         for run in range(n_episodes):
-            print(np.argmax(w_tot[100*run:100*(run+1), :], axis=1))
+            logger.info(f'w_tot: {np.argmax(w_tot[100*run:100*(run+1), :], axis=1)}')
 
+    logger.strong_line()
 
-    print('##################################################################################################')
-
-    return dataset
+    if save:
+        logger.log_dataset(dataset)
 
 
 def load_policy(log_name, iteration, seed):
@@ -109,50 +83,24 @@ def load_policy(log_name, iteration, seed):
 
 
 if __name__ == '__main__':
-    save = True
-    dt = 1/6
-    #dt = 0
+    parser = argparse.ArgumentParser()
 
-    horizon = 10000
-    gamma = .99
+    parser.add_argument('--path', '-p', type=str,
+                        default='Results/final_medium/HopperBulletEnv-v0/metricrl_c10hcovr_expdTruet1.0snone')
+    parser.add_argument("--env-id", '-e', type=str,
+                        default='HopperBulletEnv-v0')
+    parser.add_argument("--seed", '-s', type=int, default=0)
+    parser.add_argument("--n-episodes", '-n', type=int, default=1)
 
-    # env_id = 'AntBulletEnv-v0'
-    # log_name = 'Results/final_medium/AntBulletEnv-v0/metricrl_c10hcovr_expdTruet0.33snone'
-    # seed = 0
-    # iteration = 1001
+    args = parser.parse_args()
 
-    # env_id = 'AntBulletEnv-v0'
-    # log_name = 'Results/diffentrop/env_id_AntBulletEnv-v0/alg_name_PPO/nb_centers_10'
-    # seed = 24
-    # iteration = 1001
+    save = False
 
-    env_id = 'HopperBulletEnv-v0'
-    log_name = 'Results/final_medium/HopperBulletEnv-v0/metricrl_c10hcovr_expdTruet1.0snone'
-    seed = 12
-    # log_name = 'Results/diffproto_temp/env_id_HopperBulletEnv-v0/alg_name_PPO/nb_centers_10'
-    # log_name = 'Results/diffentrop/env_id_HopperBulletEnv-v0/alg_name_TRPO/nb_centers_10'
-    # seed = 23
     iteration = 1001
 
-    # env_id = 'HalfCheetahBulletEnv-v0'
-    # log_name = 'Results/final_medium/HalfCheetahBulletEnv-v0/metricrl_c10hcovr_expdTruet0.33snone'
-    # seed = 2
-    # # log_name = 'Results/diffentrop/env_id_HalfCheetahBulletEnv-v0/alg_name_PPO/nb_centers_10'
-    # # seed = 5
-    # iteration = 1001
+    path = Path(args.path) / f'agent-{args.seed}.msh'
 
-    # env_id = 'Pendulum-v0'
-    # # log_name = 'Results/final_small2/Pendulum-v0/metricrl_c5hcovr_expdTruet1.0snone'
-    # # seed = 15
-    # log_name = 'Results/final_small2/Pendulum-v0/metricrl_c10hcovr_expdTruet1.0snone'
-    # seed = 3
-    # iteration = 501
+    replay(path, args.env_id, n_episodes=args.n_episodes, seed=args.seed, save=save)
 
-    policy = load_policy(log_name, iteration=iteration, seed=seed)
 
-    dataset = replay(env_id, horizon, gamma, policy, dt=dt, n_episodes=1, seed=seed)
-
-    if save:
-        with open('dataset.pkl', 'wb') as file:
-            pickle.dump(dataset, file)
 
