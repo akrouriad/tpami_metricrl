@@ -50,7 +50,6 @@ class MetricRegressor(nn.Module):
         if self._cluster_count < self._n_clusters:
             if self.centers.requires_grad:
                 for k in range(self._n_clusters):
-                    print(self._init_cluster_noise)
                     self.centers.data[k] = s + torch.randn_like(s) * self._init_cluster_noise
                 self._cluster_count = self._n_clusters
             else:

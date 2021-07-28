@@ -20,12 +20,12 @@ from experiment_launcher import get_default_params
 
 
 def experiment(alg_name, env_id, n_epochs=1000, n_steps=3000, n_steps_per_fit=3000, n_episodes_test=5, n_models_v=1,
-               seed=0, results_dir=None):
+               seed=0, results_dir='logs'):
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.set_num_threads(1)
 
-    logger = Logger(log_name=alg_name, results_dir=results_dir, log_console=results_dir is not None, seed=seed)
+    logger = Logger(log_name=alg_name, results_dir=results_dir, seed=seed)
 
     mdp = Gym(env_id)
 
@@ -92,8 +92,7 @@ def get_alg_and_parameters(alg_name):
                           n_epochs_policy=10,
                           batch_size=64,
                           eps_ppo=.2,
-                          lam=.95,
-                          quiet=True)
+                          lam=.95)
 
         return PPO, alg_params
 
@@ -104,8 +103,7 @@ def get_alg_and_parameters(alg_name):
                           n_epochs_line_search=10,
                           n_epochs_cg=10,
                           cg_damping=1e-2,
-                          cg_residual_tol=1e-10,
-                          quiet=True)
+                          cg_residual_tol=1e-10)
 
         return TRPO, alg_params
 
