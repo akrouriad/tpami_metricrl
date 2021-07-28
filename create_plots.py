@@ -48,7 +48,7 @@ def load_data_metricrl(results_dir, env, n_seeds):
 
     results_dict = dict()
 
-    for clusters_dir in env_dir.iterdir():
+    for clusters_dir in sorted(env_dir.iterdir()):
 
         n_clusters = clusters_dir.name.split('_')[-1]
         data_dir = clusters_dir / 'MetricRL'
@@ -80,14 +80,13 @@ def load_data(data_dir, n_seeds):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--env', type=str)
-    parser.add_argument('--results-dir', type=str)
+    parser.add_argument('--results-dir', type=str, default='logs')
     parser.add_argument('--n-seeds', type=int, default=25)
     parser.add_argument('--display', action='store_true')
 
     args = parser.parse_args()
     results_dir = Path(args.results_dir)
 
-    metricrl_data_dict = load_data_metricrl(results_dir, args.env, args.n_seeds)
+    metricrl_data_dict = load_data_metricrl(results_dir / 'metricrl', args.env, args.n_seeds)
 
     create_figures(results_dir, args.env, metricrl_data_dict, subfolder=None, display=args.display)
-
