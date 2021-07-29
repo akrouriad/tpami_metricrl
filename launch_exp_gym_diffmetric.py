@@ -3,12 +3,12 @@ from experiment_launcher import Launcher
 if __name__ == '__main__':
     local = False
     test = False
-
+    
     exp = 'big'
     # exp = 'small'
 
-    launcher = Launcher(exp_name='deep_baselines',
-                        python_file='exp_gym_deep',
+    launcher = Launcher(exp_name='metricrl_diff',
+                        python_file='exp_gym_diffmetric',
                         n_exp=25,
                         memory=2000,
                         hours=24,
@@ -19,6 +19,10 @@ if __name__ == '__main__':
                         use_timestamp=True)
 
     algs = ['PPO', 'TRPO']
+    # algs = ['PPO']
+    # nb_centers_list = [10, 20, 40]
+    nb_centers_list = [10]
+    init_cluster_noises = [0.1, 1.]
 
     if exp == 'big':
         envs = ['HopperBulletEnv-v0', 'Walker2DBulletEnv-v0', 'HalfCheetahBulletEnv-v0', 'AntBulletEnv-v0']
@@ -41,6 +45,9 @@ if __name__ == '__main__':
 
     for env in envs:
         for alg in algs:
-            launcher.add_experiment(env_id=env, alg_name=alg)
+            for nb_centers in nb_centers_list:
+                for init_cluster_noise in init_cluster_noises:
+                    launcher.add_experiment(env_id=env, alg_name=alg, nb_centers=nb_centers,
+                                            init_cluster_noise=init_cluster_noise)
 
         launcher.run(local, test)
