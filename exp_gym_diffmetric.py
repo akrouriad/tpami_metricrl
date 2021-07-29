@@ -25,7 +25,7 @@ def experiment(alg_name, env_id, n_epochs=1000, n_steps=3000, n_steps_per_fit=30
     torch.manual_seed(seed)
     torch.set_num_threads(1)
 
-    logger = Logger(log_name='DiffMetricRL_' + alg_name, results_dir=results_dir, seed=seed)
+    logger = Logger(log_name='MetricRLDiff', results_dir=results_dir, seed=seed)
 
     mdp = Gym(env_id)
 
