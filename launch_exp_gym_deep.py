@@ -6,15 +6,18 @@ if __name__ == '__main__':
     
     exp = 'big'
     # exp = 'small'
-    
-    exp_name = 'metricrl_diff'
-    python_file = 'exp_gym_diffmetric'
-    # exp_name = 'deep_baselines'
-    # python_file = 'exp_gym_deep'
+
+    use_metric = True
+
+    if use_metric:
+        exp_name = 'metricrl_diff'
+        python_file = 'exp_gym_diffmetric'
+    else:
+        exp_name = 'deep_baselines'
+        python_file = 'exp_gym_deep'
 
     launcher = Launcher(exp_name=exp_name,
                         python_file=python_file,
-                        # n_exp=25,
                         n_exp=25,
                         memory=2000,
                         hours=24,
