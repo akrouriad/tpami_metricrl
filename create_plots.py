@@ -3,6 +3,7 @@ from pathlib import Path
 import numpy as np
 from metric_rl.utils import plot_data
 import matplotlib.pyplot as plt
+from contextlib import contextmanager
 
 
 def create_figures(results_dir, env, data_dict, subfolder=None, use_median=False, display=False, legend_plot='R'):
@@ -59,6 +60,14 @@ def load_data_metricrl(results_dir, env, n_seeds):
 
     return results_dict
 
+@contextmanager
+def ignore_missing_file():
+  try:
+    yield
+  except FileNotFoundError as e:
+      print(e)
+      return dict()
+
 
 def load_data_metricrl_diff(results_dir, env, n_seeds):
     env_subfolder = 'env_id_' + env
@@ -106,7 +115,7 @@ def load_data(data_dir, n_seeds):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--env', type=str, nargs='+')
+    parser.add_argument('--envs', type=str, nargs='+')
     parser.add_argument('--results-dir', type=str, default='logs')
     parser.add_argument('--n-seeds', type=int, default=25)
     parser.add_argument('--display', action='store_true')
@@ -116,15 +125,17 @@ if __name__ == '__main__':
 
     bullet_envs = ['HopperBulletEnv-v0', 'Walker2DBulletEnv-v0', 'HalfCheetahBulletEnv-v0', 'AntBulletEnv-v0']
 
-    envs = args.env
+    envs = args.envs
 
     if 'bullet' in envs:
         envs.remove('bullet')
         envs += bullet_envs
 
     for env in envs:
-        metricrl_data_dict = load_data_metricrl(results_dir / 'metricrl', env, args.n_seeds)
-        metricrl_diff_data_dict = load_data_metricrl_diff(results_dir / 'metricrl_diff', env, args.n_seeds)
+        data_dict = dict()
+        with ignore_missing_file():
+            data_dict.update(**load_data_metricrl(results_dir / 'metricrl', env, args.n_seeds))
+        with ignore_missing_file():
+            data_dict.update(**load_data_metricrl_diff(results_dir / 'metricrl_diff', env, args.n_seeds))
 
-        data_dict = dict(**metricrl_data_dict, **metricrl_diff_data_dict)
         create_figures(results_dir, env, data_dict, subfolder=None, display=args.display)
