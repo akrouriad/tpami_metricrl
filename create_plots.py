@@ -83,11 +83,28 @@ def load_data_metricrl_diff(results_dir, env, n_seeds):
 
             for init_cluster_noise_dir in sorted(nb_centers_dir.iterdir()):
                 init_cluster_noise = init_cluster_noise_dir.name.split('_')[-1]
-                data_dir = init_cluster_noise_dir / f'MetricRLDiff'
+                data_dir = init_cluster_noise_dir / 'MetricRLDiff'
 
                 J, R, E = load_data(data_dir, n_seeds)
 
                 results_dict[f'MetricRLDiff-{alg_name}-{nb_centers}-{init_cluster_noise}'] = dict(J=J, R=R, E=E)
+
+    return results_dict
+
+
+def load_data_deep_baselines(results_dir, env, n_seeds):
+    env_subfolder = 'env_id_' + env
+    env_dir = results_dir / env_subfolder
+
+    results_dict = dict()
+
+    for alg_dir in sorted(env_dir.iterdir()):
+        alg_name = alg_dir.name.split('_')[-1]
+
+        data_dir = alg_dir / alg_name
+        J, R, E = load_data(data_dir, n_seeds)
+
+        results_dict[alg_name] = dict(J=J, R=R, E=E)
 
     return results_dict
 
@@ -137,5 +154,6 @@ if __name__ == '__main__':
             data_dict.update(**load_data_metricrl(results_dir / 'metricrl', env, args.n_seeds))
         with ignore_missing_file():
             data_dict.update(**load_data_metricrl_diff(results_dir / 'metricrl_diff', env, args.n_seeds))
-
+        with ignore_missing_file():
+            data_dict.update(**load_data_deep_baselines(results_dir / 'deep_baselines', env, args.n_seeds))
         create_figures(results_dir, env, data_dict, subfolder=None, display=args.display)
