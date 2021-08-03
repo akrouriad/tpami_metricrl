@@ -14,7 +14,7 @@ from metric_rl.metric_rl import MetricRL
 from metric_rl.utils import save_parameters
 from metric_rl.rl_shared import TwoPhaseEntropProfile, MLP
 
-from experiment_launcher import get_default_params
+from experiment_launcher import get_default_params, add_launcher_base_args
 
 
 def experiment(env_id, n_epochs=1000, n_steps=3000, n_steps_per_fit=3000, n_episodes_test=5, n_clusters=10,
@@ -131,6 +131,7 @@ def parse_args():
     parser.add_argument('--seed', type=int)
     parser.add_argument('--results-dir', type=str)
 
+    parser = add_launcher_base_args(parser)
     parser.set_defaults(**get_default_params(experiment))
     args = parser.parse_args()
     return vars(args)
