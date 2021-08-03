@@ -24,3 +24,14 @@ its associate launcher file.
 differently from the paper, in this code, we don't provide the stable-baselines implementation of deep reinforcement 
 learning algorithms. The `exp_gym_deep.py` file and the associated launch file will use the Mushroom RL implementation 
 of these algorithms.
+
+## Visualization of the results
+To visualize the learned policy, you can use the `replay.py` python file. This file will search the given agent in the
+specified folder, and run an evaluation run for a given number of episodes. It's important to specify the `--path` 
+command-line argument with the directory containing the agent and the `--seed` to select the appropriate agent to use.
+
+To create the learning curves plot, it's possible to run the `create_plots.py` file. Here, you have to specify the path
+to a folder containing at least one of these subfolders containing the results: 
+- 'metricrl', for the results of the proposed algorithm
+- 'metricrl_diff', for the differentiable version of the algorithm 
+- 'deep_baselines', for the results of the deep baseline.
