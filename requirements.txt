@@ -1,3 +1,4 @@
 torch
+pybullet
 mushroom-rl>=1.7.0
 experiment-launcher>=1.2
