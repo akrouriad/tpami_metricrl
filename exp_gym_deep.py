@@ -15,7 +15,7 @@ from metric_rl.rl_shared import MLP
 import torch.optim as optim
 import torch.nn.functional as F
 
-from experiment_launcher import get_default_params, add_launcher_base_args
+from experiment_launcher import get_default_params, add_launcher_base_args, run_experiment
 
 
 def experiment(alg_name, env_id, n_epochs=1000, n_steps=3000, n_steps_per_fit=3000, n_episodes_test=5, n_models_v=1,
@@ -131,4 +131,4 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
-    experiment(**args)
+    run_experiment(experiment, args)
