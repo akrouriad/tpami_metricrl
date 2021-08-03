@@ -9,12 +9,12 @@ if __name__ == '__main__':
 
     launcher = Launcher(exp_name='metricrl_diff',
                         python_file='exp_gym_diffmetric',
-                        n_exp=25,
+                        n_exps=25,
                         memory=2000,
                         hours=24,
                         minutes=0,
                         seconds=0,
-                        n_jobs=-1,
+                        joblib_n_jobs=5,
                         partition='test24',
                         use_timestamp=True)
 
